@@ -120,74 +120,14 @@ class UHF_CCSD:
         self.t2_abab = np.zeros(shape=(nva, nvb, noa, nob))
         self.t2_bbbb = np.zeros(shape=(nvb, nvb, nob, nob))
 
+        self.dampers = self.build_dampers(shift_1e=0.1)
+
         # spin-changing terms that do not appear in the CC equations
         # but appear as residues
         self.t2_abba = np.zeros(shape=(nva, nvb, nob, noa))
         self.t2_baab = np.zeros(shape=(nvb, nva, noa, nob))
         self.t2_baba = np.zeros(shape=(nvb, nva, nob, noa))
 
-        oa = self.intermediates.oa
-        va = self.intermediates.va
-        ob = self.intermediates.ob
-        vb = self.intermediates.vb
-        new_axis = np.newaxis
-
-        fock_energy_a = self.intermediates.f_aa.diagonal()
-        fock_energy_b = self.intermediates.f_bb.diagonal()
-
-        # a set of matrices where for each matrix the index [a][i] or
-        # [a][b][i][j] (you get the point) gives you the inverse of the sum
-        # of the fock eigenvalues for these indices e.g
-        # dampers['aa'][a][i] = 1 / (-fock_aa[a][a] + fock_aa[i][i])
-        # See that the values are attempted to be negative bc, the virtual
-        # eigenvalues come with a minus sign.
-        self.dampers = {
-            'aa': 1.0 / (
-                - fock_energy_a[va, new_axis]
-                + fock_energy_a[new_axis, oa]
-            ),
-            'bb': 1.0 / (
-                - fock_energy_b[vb, new_axis]
-                + fock_energy_b[new_axis, ob]
-            ),
-            'aaaa': 1.0 / (
-                - fock_energy_a[va, new_axis, new_axis, new_axis]
-                - fock_energy_a[new_axis, va, new_axis, new_axis]
-                + fock_energy_a[new_axis, new_axis, oa, new_axis]
-                + fock_energy_a[new_axis, new_axis, new_axis, oa]
-            ),
-            'abab': 1.0 / (
-                - fock_energy_a[va, new_axis, new_axis, new_axis]
-                - fock_energy_b[new_axis, vb, new_axis, new_axis]
-                + fock_energy_a[new_axis, new_axis, oa, new_axis]
-                + fock_energy_b[new_axis, new_axis, new_axis, ob]
-            ),
-            'bbbb': 1.0 / (
-                - fock_energy_b[vb, new_axis, new_axis, new_axis]
-                - fock_energy_b[new_axis, vb, new_axis, new_axis]
-                + fock_energy_b[new_axis, new_axis, ob, new_axis]
-                + fock_energy_b[new_axis, new_axis, new_axis, ob]
-            ),
-            # spin-changing terms
-            'abba': 1.0 / (
-                - fock_energy_a[va, new_axis, new_axis, new_axis]
-                - fock_energy_b[new_axis, vb, new_axis, new_axis]
-                + fock_energy_b[new_axis, new_axis, ob, new_axis]
-                + fock_energy_a[new_axis, new_axis, new_axis, oa]
-            ),
-            'baab': 1.0 / (
-                - fock_energy_b[vb, new_axis, new_axis, new_axis]
-                - fock_energy_a[new_axis, va, new_axis, new_axis]
-                + fock_energy_a[new_axis, new_axis, oa, new_axis]
-                + fock_energy_b[new_axis, new_axis, new_axis, ob]
-            ),
-            'baba': 1.0 / (
-                - fock_energy_b[vb, new_axis, new_axis, new_axis]
-                - fock_energy_a[new_axis, va, new_axis, new_axis]
-                + fock_energy_b[new_axis, new_axis, ob, new_axis]
-                + fock_energy_a[new_axis, new_axis, new_axis, oa]
-            ),
-        }
 
     def solve_cc_equations(self):
         MAX_CCSD_ITER = 50
@@ -577,3 +517,73 @@ class UHF_CCSD:
             optimize=['einsum_path', (0, 2), (1, 2), (0, 1)]
         )
         return singles_res_bb
+
+    def build_dampers(self, shift_1e: float = 0.0, shift_2e: float = 0.0):
+        """ Helper objects that allow you to take a `matrix` and do
+        `matrix / (f_ii - f_aa)`
+        by doing
+        `(f_ii - f_aa)^-1 * matrix`
+
+        a set of matrices where for each matrix the index [a][i] or
+        [a][b][i][j] (you get the point) gives you the inverse of the sum of
+        the fock eigenvalues for these indices e.g dampers['aa'][a][i] = 1 /
+        (-fock_aa[a][a] + fock_aa[i][i]) See that the values are attempted to
+        be negative bc, the virtual eigenvalues come with a minus sign.
+        """
+        oa = self.intermediates.oa
+        va = self.intermediates.va
+        ob = self.intermediates.ob
+        vb = self.intermediates.vb
+        new_axis = np.newaxis
+
+        fock_energy_a = self.intermediates.f_aa.diagonal()
+        fock_energy_b = self.intermediates.f_bb.diagonal()
+
+        dampers = {
+            'aa': 1.0 / (
+                - fock_energy_a[va, new_axis]
+                + fock_energy_a[new_axis, oa]
+            ) - shift_1e,
+            'bb': 1.0 / (
+                - fock_energy_b[vb, new_axis]
+                + fock_energy_b[new_axis, ob]
+            ) - shift_1e,
+            'aaaa': 1.0 / (
+                - fock_energy_a[va, new_axis, new_axis, new_axis]
+                - fock_energy_a[new_axis, va, new_axis, new_axis]
+                + fock_energy_a[new_axis, new_axis, oa, new_axis]
+                + fock_energy_a[new_axis, new_axis, new_axis, oa]
+            ) - shift_2e,
+            'abab': 1.0 / (
+                - fock_energy_a[va, new_axis, new_axis, new_axis]
+                - fock_energy_b[new_axis, vb, new_axis, new_axis]
+                + fock_energy_a[new_axis, new_axis, oa, new_axis]
+                + fock_energy_b[new_axis, new_axis, new_axis, ob]
+            ) - shift_2e,
+            'bbbb': 1.0 / (
+                - fock_energy_b[vb, new_axis, new_axis, new_axis]
+                - fock_energy_b[new_axis, vb, new_axis, new_axis]
+                + fock_energy_b[new_axis, new_axis, ob, new_axis]
+                + fock_energy_b[new_axis, new_axis, new_axis, ob]
+            ) - shift_2e,
+            # spin-changing terms
+            'abba': 1.0 / (
+                - fock_energy_a[va, new_axis, new_axis, new_axis]
+                - fock_energy_b[new_axis, vb, new_axis, new_axis]
+                + fock_energy_b[new_axis, new_axis, ob, new_axis]
+                + fock_energy_a[new_axis, new_axis, new_axis, oa]
+            ) - shift_2e,
+            'baab': 1.0 / (
+                - fock_energy_b[vb, new_axis, new_axis, new_axis]
+                - fock_energy_a[new_axis, va, new_axis, new_axis]
+                + fock_energy_a[new_axis, new_axis, oa, new_axis]
+                + fock_energy_b[new_axis, new_axis, new_axis, ob]
+            ) - shift_2e,
+            'baba': 1.0 / (
+                - fock_energy_b[vb, new_axis, new_axis, new_axis]
+                - fock_energy_a[new_axis, va, new_axis, new_axis]
+                + fock_energy_b[new_axis, new_axis, ob, new_axis]
+                + fock_energy_a[new_axis, new_axis, new_axis, oa]
+            ) - shift_2e,
+        }
+        return dampers
