@@ -146,7 +146,7 @@ class UHF_CCSD:
             energy_change = current_energy - old_energy
             residuals_norm = self.get_residuals_norm(residuals)
             self.print_iteration_report(
-                iter_idx, current_energy, energy_change, residuals_norm
+                iter_idx + 1, current_energy, energy_change, residuals_norm
             )
 
             energy_converged = np.abs(energy_change) < ENERGY_CONVERGENCE
@@ -160,6 +160,14 @@ class UHF_CCSD:
 
     def get_residuals_norm(self, residuals):
         return sum(np.linalg.norm(residual) for residual in residuals.values())
+
+    def print_the_largest_element(self, array, header: str = ''):
+        max_index = np.unravel_index(np.argmax(np.abs(array)), array.shape)
+        max_element = array[max_index]
+        if header != '':
+            print(header + ' ', end='')
+        print(f'max value = {max_element:.6f}', end='')
+        print(f' at index {tuple(int(idx) for idx in max_index)}')
 
     def print_iteration_report(
         self, iter_idx, current_energy, energy_change, residuals_norm,
