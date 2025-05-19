@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chem"
+version = "0.1.0"
+readme = "readme.md"
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+authors = [
+    {name = "Paweł Wójcik", email = "pawel.wojcik5@gmail.com"}
+]
+requires-python = ">=3.8"
+dependencies = [
+  "numpy",
+  "scipy",
+]
+
+[project.urls]
+Repository = "https://github.com/the-pawel-wojcik/chem"
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "pytest",
+    "pytest-sphinx",
+    "pytest-cov",
+    "twine",
+    "wheel",
+    "build",
+    "hatchling",
+    "Sphinx",
+    "sphinx-copybutton",
+    "sphinx-autobuild",
+    "sphinx-autodoc-typehints",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chem"]
+
+[tool.pytest.ini_options]
+testpaths = "tests/"
+python_classes = [
+  "Test*",
+  "*Test"
+]
+log_level = "DEBUG"
