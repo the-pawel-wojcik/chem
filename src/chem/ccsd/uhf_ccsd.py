@@ -538,52 +538,60 @@ class UHF_CCSD:
 
         fock_energy_a = self.intermediates.f_aa.diagonal()
         fock_energy_b = self.intermediates.f_bb.diagonal()
-
         dampers = {
             'aa': 1.0 / (
                 - fock_energy_a[va, new_axis]
                 + fock_energy_a[new_axis, oa]
-            ) - shift_1e,
+                - shift_1e
+            ),
             'bb': 1.0 / (
                 - fock_energy_b[vb, new_axis]
                 + fock_energy_b[new_axis, ob]
-            ) - shift_1e,
+                - shift_1e
+            ),
             'aaaa': 1.0 / (
                 - fock_energy_a[va, new_axis, new_axis, new_axis]
                 - fock_energy_a[new_axis, va, new_axis, new_axis]
                 + fock_energy_a[new_axis, new_axis, oa, new_axis]
                 + fock_energy_a[new_axis, new_axis, new_axis, oa]
-            ) - shift_2e,
+                - shift_2e
+            ),
             'abab': 1.0 / (
                 - fock_energy_a[va, new_axis, new_axis, new_axis]
                 - fock_energy_b[new_axis, vb, new_axis, new_axis]
                 + fock_energy_a[new_axis, new_axis, oa, new_axis]
                 + fock_energy_b[new_axis, new_axis, new_axis, ob]
-            ) - shift_2e,
+                - shift_2e
+            ),
             'bbbb': 1.0 / (
                 - fock_energy_b[vb, new_axis, new_axis, new_axis]
                 - fock_energy_b[new_axis, vb, new_axis, new_axis]
                 + fock_energy_b[new_axis, new_axis, ob, new_axis]
                 + fock_energy_b[new_axis, new_axis, new_axis, ob]
-            ) - shift_2e,
+                - shift_2e
+            ),
             # spin-changing terms
             'abba': 1.0 / (
                 - fock_energy_a[va, new_axis, new_axis, new_axis]
                 - fock_energy_b[new_axis, vb, new_axis, new_axis]
                 + fock_energy_b[new_axis, new_axis, ob, new_axis]
                 + fock_energy_a[new_axis, new_axis, new_axis, oa]
-            ) - shift_2e,
+                - shift_2e
+            ),
             'baab': 1.0 / (
                 - fock_energy_b[vb, new_axis, new_axis, new_axis]
                 - fock_energy_a[new_axis, va, new_axis, new_axis]
                 + fock_energy_a[new_axis, new_axis, oa, new_axis]
                 + fock_energy_b[new_axis, new_axis, new_axis, ob]
-            ) - shift_2e,
+                - shift_2e
+            ),
             'baba': 1.0 / (
                 - fock_energy_b[vb, new_axis, new_axis, new_axis]
                 - fock_energy_a[new_axis, va, new_axis, new_axis]
                 + fock_energy_b[new_axis, new_axis, ob, new_axis]
                 + fock_energy_a[new_axis, new_axis, new_axis, oa]
-            ) - shift_2e,
+                - shift_2e
+            ),
         }
+
         return dampers
