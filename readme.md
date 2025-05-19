@@ -1,1 +1,2 @@
-# `chem`
+# Computational Chemistry
+Electronic structure programs
