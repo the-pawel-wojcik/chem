@@ -20,8 +20,7 @@ def get_doubles_residual_aaaa(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-
+    
     contracted_intermediate = -1.00 * einsum('ki,bajk->abij', f_aa[oa, oa], t2_aaaa)
     doubles_res_aaaa =  1.00000 * contracted_intermediate + -1.00000 * einsum('abij->abji', contracted_intermediate) 
     contracted_intermediate =  1.00 * einsum('bc,caji->abij', f_aa[va, va], t2_aaaa)
@@ -108,7 +107,6 @@ def get_doubles_residual_aaaa(
     return doubles_res_aaaa
 
 
-
 def get_doubles_residual_abab(
     intermediates: Intermediates,
     t1_aa: NDArray,
@@ -126,8 +124,7 @@ def get_doubles_residual_abab(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-
+    
     doubles_res_abab = -1.00 * einsum('ki,abkj->abij', f_aa[oa, oa], t2_abab)
     doubles_res_abab += -1.00 * einsum('kj,abik->abij', f_bb[ob, ob], t2_abab)
     doubles_res_abab +=  1.00 * einsum('bc,acij->abij', f_bb[vb, vb], t2_abab)
@@ -232,7 +229,6 @@ def get_doubles_residual_abab(
     return doubles_res_abab
 
 
-
 def get_doubles_residual_abba(
     intermediates: Intermediates,
     t1_aa: NDArray,
@@ -250,8 +246,7 @@ def get_doubles_residual_abba(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-
+    
     doubles_res_abba =  1.00 * einsum('ki,abjk->abij', f_bb[ob, ob], t2_abab)
     doubles_res_abba +=  1.00 * einsum('kj,abki->abij', f_aa[oa, oa], t2_abab)
     doubles_res_abba += -1.00 * einsum('bc,acji->abij', f_bb[vb, vb], t2_abab)
@@ -373,8 +368,7 @@ def get_doubles_residual_baab(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-
+    
     doubles_res_baab =  1.00 * einsum('ki,bakj->abij', f_aa[oa, oa], t2_abab)
     doubles_res_baab +=  1.00 * einsum('kj,baik->abij', f_bb[ob, ob], t2_abab)
     doubles_res_baab += -1.00 * einsum('bc,caij->abij', f_aa[va, va], t2_abab)
@@ -479,7 +473,6 @@ def get_doubles_residual_baab(
     return doubles_res_baab
 
 
-
 def get_doubles_residual_baba(
     intermediates: Intermediates,
     t1_aa: NDArray,
@@ -497,8 +490,7 @@ def get_doubles_residual_baba(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-
+    
     doubles_res_baba = -1.00 * einsum('ki,bajk->abij', f_bb[ob, ob], t2_abab)
     doubles_res_baba += -1.00 * einsum('kj,baki->abij', f_aa[oa, oa], t2_abab)
     doubles_res_baba +=  1.00 * einsum('bc,caji->abij', f_aa[va, va], t2_abab)
@@ -620,8 +612,7 @@ def get_doubles_residual_bbbb(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-
+    
     contracted_intermediate = -1.00 * einsum('ki,bajk->abij', f_bb[ob, ob], t2_bbbb)
     doubles_res_bbbb =  1.00000 * contracted_intermediate + -1.00000 * einsum('abij->abji', contracted_intermediate) 
     contracted_intermediate =  1.00 * einsum('bc,caji->abij', f_bb[vb, vb], t2_bbbb)
@@ -706,5 +697,3 @@ def get_doubles_residual_bbbb(
     doubles_res_bbbb +=  1.00000 * contracted_intermediate + -1.00000 * einsum('abij->baij', contracted_intermediate) 
     doubles_res_bbbb +=  1.00 * einsum('lkcd,al,bk,ci,dj->abij', g_bbbb[ob, ob, vb, vb], t1_bb, t1_bb, t1_bb, t1_bb, optimize=['einsum_path', (0, 3), (2, 3), (0, 2), (0, 1)])
     return doubles_res_bbbb
-
-
