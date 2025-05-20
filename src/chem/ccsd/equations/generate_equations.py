@@ -1,29 +1,26 @@
 import itertools
 import pdaggerq
-
-
-def numpy_print_energy_uhf(pq):
-    print('import numpy as np')
-    print('from numpy import einsum')
-    print()
-    from pdaggerq.parser import contracted_strings_to_tensor_terms
-
-    out_var = 'uhf_ccsd'
-    print(f'{out_var} = np.zeros()  # TODO')
-
-    terms = pq.strings(spin_labels={})
-    tensor_terms = contracted_strings_to_tensor_terms(terms)
-
-    for my_term in tensor_terms:
-        einsum_terms = my_term.einsum_string(
-            output_variables=(),
-            update_val=out_var,
-        )
-        print(f"{einsum_terms}")
-
+from pdaggerq.parser import contracted_strings_to_tensor_terms
 
 TAB = '    '
-VARS_FILLER = '''
+
+def print_imports() -> None:
+    print('from numpy import einsum')
+    print('from numpy.typing import NDArray')
+    print('from chem.hf.intermediates_builders import Intermediates')
+
+
+def print_function_header(quantity: str, spin_subscript: str = '') -> None:
+
+    if not quantity.isidentifier():
+        raise ValueError('Argument must be a valid python isidentifier.')
+    if spin_subscript != '' and not spin_subscript.isidentifier():
+        raise ValueError('Argument must be a valid python isidentifier.')
+
+    if spin_subscript != '':
+        spin_subscript = '_' + spin_subscript
+
+    body = f'''\n\ndef get_{quantity}{spin_subscript}(
     intermediates: Intermediates,
     t1_aa: NDArray,
     t1_bb: NDArray,
@@ -40,37 +37,44 @@ VARS_FILLER = '''
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-'''
+    '''
+    print(body)
 
-SINGLES_HEADER= {
-    'aa': '''
-def get_singles_residual_aa(''' + VARS_FILLER,  # )
-    'bb':'''
-def get_singles_residual_bb(''' + VARS_FILLER,  # )
-    'ab':'# TODO: CLEANUP',
-    'ba':'# TODO: CLEANUP',
-}
+
+def numpy_print_energy(pq):
+    out_var = 'uhf_ccsd_energy'
+    terms = pq.strings(spin_labels={})
+    tensor_terms = contracted_strings_to_tensor_terms(terms)
+
+    print_imports()
+    print_function_header('energy')
+
+    for my_term in tensor_terms:
+        einsum_terms = my_term.einsum_string(
+            output_variables=(),
+            update_val=out_var,
+        )
+        print(f'{TAB}{einsum_terms}')
+    print(f'{TAB}return {out_var}')
 
 
 def numpy_print_singles_uhf(pq):
-    print('from numpy import einsum')
-    print('from numpy.typing import NDArray')
-    print('from chem.hf.intermediates_builders import Intermediates')
-    print()
-
-    from pdaggerq.parser import contracted_strings_to_tensor_terms
+    print_imports()
     for spin_mix in itertools.product(['a', 'b'], repeat=2):
         spin_labels = {
             'a': spin_mix[0],
             'i': spin_mix[1],
         }
-        
-        print(SINGLES_HEADER[''.join(spin_mix)])
-        print()
 
         terms = pq.strings(spin_labels=spin_labels)
         tensor_terms = contracted_strings_to_tensor_terms(terms)
+        if len(tensor_terms) == 0:
+            continue
 
+        print_function_header(
+            quantity='singles_residual',
+            spin_subscript=''.join(spin_mix)
+        )
         out_var = 'singles_res_' + ''.join(spin_mix)
         for my_term in tensor_terms:
             einsum_terms = my_term.einsum_string(
@@ -78,45 +82,13 @@ def numpy_print_singles_uhf(pq):
                 update_val=out_var,
             )
             print(f"{TAB}{einsum_terms}")
-        print(f'{TAB}return {out_var}\n\n')
-
-
-DOUBLES_HEADER= {
-    'aaaa': '''
-def get_doubles_residual_aaaa(''' + VARS_FILLER,  # )
-    'bbbb':'''
-def get_doubles_residual_bbbb(''' + VARS_FILLER,  # )
-    'abab': '''
-def get_doubles_residual_abab(''' + VARS_FILLER,  # )
-    'abba': '''
-def get_doubles_residual_abba(''' + VARS_FILLER,  # )
-    'baab': '''
-def get_doubles_residual_baab(''' + VARS_FILLER,  # )
-    'baba': '''
-def get_doubles_residual_baba(''' + VARS_FILLER,  # )
-    'aaab': '# TODO: CLEANUP',
-    'aaba': '# TODO: CLEANUP',
-    'aabb': '# TODO: CLEANUP',
-    'abaa': '# TODO: CLEANUP',
-    'abbb': '# TODO: CLEANUP',
-    'baaa': '# TODO: CLEANUP',
-    'babb': '# TODO: CLEANUP',
-    'bbaa': '# TODO: CLEANUP',
-    'bbab': '# TODO: CLEANUP',
-    'bbba': '# TODO: CLEANUP',
-}
+        print(f'{TAB}return {out_var}')
 
 
 def numpy_print_doubles_uhf(pq):
-    print('from numpy import einsum')
-    print('from numpy.typing import NDArray')
-    print('from chem.hf.intermediates_builders import Intermediates')
-    print()
-    from pdaggerq.parser import contracted_strings_to_tensor_terms
+    print_imports()
     for spin_mix in itertools.product(['a', 'b'], repeat=4):
         out_var = 'doubles_res_' + ''.join(spin_mix)
-        print(DOUBLES_HEADER[''.join(spin_mix)])
-        print()
         spin_labels = {
             'a': spin_mix[0],
             'b': spin_mix[1],
@@ -125,7 +97,13 @@ def numpy_print_doubles_uhf(pq):
         }
         terms = pq.strings(spin_labels=spin_labels)
         tensor_terms = contracted_strings_to_tensor_terms(terms)
+        if len(tensor_terms) == 0:
+            continue
 
+        print_function_header(
+            quantity='doubles_residual',
+            spin_subscript=''.join(spin_mix)
+        )
         for my_term in tensor_terms:
             einsum_terms = my_term.einsum_string(
                 output_variables=('a', 'b', 'i', 'j'),
@@ -133,7 +111,7 @@ def numpy_print_doubles_uhf(pq):
             )
             for print_term in einsum_terms.split('\n'):
                 print(f"{TAB}{print_term}")
-        print(f'{TAB}return {out_var}\n\n')
+        print(f'{TAB}return {out_var}')
 
 
 def build_energy():
@@ -163,13 +141,13 @@ def build_doubles():
 
 
 def main():
-    do_energy = False
+    do_energy = True
     do_singles = False
-    do_doubles = True
+    do_doubles = False
 
     if do_energy is True:
         pq = build_energy()
-        numpy_print_energy_uhf(pq)
+        numpy_print_energy(pq)
 
     if do_singles is True:
         pq = build_singles()
