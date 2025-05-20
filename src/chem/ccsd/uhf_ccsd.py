@@ -4,11 +4,11 @@ from chem.ccsd.containers import UHF_CCSD_Data
 from chem.ccsd.equations.uhf_ccsd_energy import (
     get_energy,
 )
-from chem.ccsd.equations.singles_uhf import (
+from chem.ccsd.equations.uhf_ccsd_singles_res import (
     get_singles_residual_aa,
     get_singles_residual_bb,
 )
-from chem.ccsd.equations.doubles_uhf import (
+from chem.ccsd.equations.uhf_ccsd_doubles_res import (
     get_doubles_residual_aaaa,
     get_doubles_residual_abab,
     get_doubles_residual_abba,
