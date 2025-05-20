@@ -20,8 +20,7 @@ def get_singles_residual_aa(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-    # The spin aa case.
+    
     singles_res_aa =  1.00 * einsum('ai->ai', f_aa[va, oa])
     singles_res_aa += -1.00 * einsum('ji,aj->ai', f_aa[oa, oa], t1_aa)
     singles_res_aa +=  1.00 * einsum('ab,bi->ai', f_aa[va, va], t1_aa)
@@ -72,8 +71,7 @@ def get_singles_residual_bb(
     vb = intermediates.vb
     oa = intermediates.oa
     ob = intermediates.ob
-
-    # The spin bb case.
+    
     singles_res_bb =  1.00 * einsum('ai->ai', f_bb[vb, ob])
     singles_res_bb += -1.00 * einsum('ji,aj->ai', f_bb[ob, ob], t1_bb)
     singles_res_bb +=  1.00 * einsum('ab,bi->ai', f_bb[vb, vb], t1_bb)
