@@ -1,25 +1,27 @@
 from numpy import einsum
 from numpy.typing import NDArray
 from chem.hf.intermediates_builders import Intermediates
+from chem.ccsd.uhf_ccsd import UHF_CCSD_Data
 
 
 def get_energy(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     uhf_ccsd_energy =  1.00 * einsum('ii', f_aa[oa, oa])
     uhf_ccsd_energy +=  1.00 * einsum('ii', f_bb[ob, ob])

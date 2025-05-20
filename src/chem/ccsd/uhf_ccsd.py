@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from chem.hf.intermediates_builders import Intermediates
+from chem.ccsd.containers import UHF_CCSD_Data
 from chem.ccsd.equations.uhf_ccsd_energy import (
     get_energy,
 )
@@ -16,6 +16,8 @@ from chem.ccsd.equations.doubles_uhf import (
     get_doubles_residual_baba,
     get_doubles_residual_bbbb,
 )
+from chem.ccsd.equations.util import GeneratorsInput
+from chem.hf.intermediates_builders import Intermediates
 
 
 class DIIS:
@@ -99,27 +101,27 @@ class DIIS:
 
 class UHF_CCSD:
 
-    def __init__(self, intermediates: Intermediates) -> None:
-        self.intermediates = intermediates
-        noa = intermediates.noa
-        nva = intermediates.nmo - noa
-        nob = intermediates.nob
-        nvb = intermediates.nmo - nob
+    def __init__(self, scf_data: Intermediates) -> None:
+        self.scf_data = scf_data
+        noa = scf_data.noa
+        nva = scf_data.nmo - noa
+        nob = scf_data.nob
+        nvb = scf_data.nmo - nob
 
-        self.t1_aa = np.zeros(shape=(nva, noa))
-        self.t1_bb = np.zeros(shape=(nvb, nob))
-
-        self.t2_aaaa = np.zeros(shape=(nva, nva, noa, noa))
-        self.t2_abab = np.zeros(shape=(nva, nvb, noa, nob))
-        self.t2_bbbb = np.zeros(shape=(nvb, nvb, nob, nob))
+        self.data = UHF_CCSD_Data(
+            t1_aa = np.zeros(shape=(nva, noa)),
+            t1_bb = np.zeros(shape=(nvb, nob)),
+            t2_aaaa = np.zeros(shape=(nva, nva, noa, noa)),
+            t2_abab = np.zeros(shape=(nva, nvb, noa, nob)),
+            t2_bbbb = np.zeros(shape=(nvb, nvb, nob, nob)),
+            # spin-changing terms that do not appear in the CC equations
+            # but appear as residues
+            t2_abba = np.zeros(shape=(nva, nvb, nob, noa)),
+            t2_baab = np.zeros(shape=(nvb, nva, noa, nob)),
+            t2_baba = np.zeros(shape=(nvb, nva, nob, noa)),
+        )
 
         self.dampers = self.build_dampers(shift_1e=0.1)
-
-        # spin-changing terms that do not appear in the CC equations
-        # but appear as residues
-        self.t2_abba = np.zeros(shape=(nva, nvb, nob, noa))
-        self.t2_baab = np.zeros(shape=(nvb, nva, noa, nob))
-        self.t2_baba = np.zeros(shape=(nvb, nva, nob, noa))
 
 
     def solve_cc_equations(self):
@@ -172,26 +174,22 @@ class UHF_CCSD:
         print(f' {residuals_norm:{e_fmt}}')
 
     def update_t_amps(self, new_t_amps):
-        self.t1_aa = new_t_amps['aa']
-        self.t1_bb = new_t_amps['bb']
-        self.t2_aaaa = new_t_amps['aaaa']
-        self.t2_abab = new_t_amps['abab']
-        self.t2_bbbb = new_t_amps['bbbb']
+        self.data.t1_aa = new_t_amps['aa']
+        self.data.t1_bb = new_t_amps['bb']
+        self.data.t2_aaaa = new_t_amps['aaaa']
+        self.data.t2_abab = new_t_amps['abab']
+        self.data.t2_bbbb = new_t_amps['bbbb']
         # spin-changing terms
-        self.t2_abba = new_t_amps['abba']
-        self.t2_baab = new_t_amps['baab']
-        self.t2_baba = new_t_amps['baba']
+        self.data.t2_abba = new_t_amps['abba']
+        self.data.t2_baab = new_t_amps['baab']
+        self.data.t2_baba = new_t_amps['baba']
 
     def calculate_residuals(self):
         residuals = dict()
 
-        kwargs = dict(
-            intermediates=self.intermediates,
-            t1_aa=self.t1_aa,
-            t1_bb=self.t1_bb,
-            t2_aaaa=self.t2_aaaa,
-            t2_abab=self.t2_abab,
-            t2_bbbb=self.t2_bbbb,
+        kwargs = GeneratorsInput(
+            uhf_scf_data=self.scf_data,
+            uhf_ccsd_data=self.data,
         )
 
         residuals['aa'] = get_singles_residual_aa(**kwargs)
@@ -209,35 +207,30 @@ class UHF_CCSD:
     def calculate_new_amplitudes(self, residuals):
         new_t_amps = dict()
         new_t_amps['aa'] =\
-            self.t1_aa + residuals['aa'] * self.dampers['aa']
+            self.data.t1_aa + residuals['aa'] * self.dampers['aa']
         new_t_amps['bb'] =\
-            self.t1_bb + residuals['bb'] * self.dampers['bb']
+            self.data.t1_bb + residuals['bb'] * self.dampers['bb']
         new_t_amps['aaaa'] =\
-            self.t2_aaaa + residuals['aaaa'] * self.dampers['aaaa']
+            self.data.t2_aaaa + residuals['aaaa'] * self.dampers['aaaa']
         new_t_amps['abab'] =\
-            self.t2_abab + residuals['abab'] * self.dampers['abab']
+            self.data.t2_abab + residuals['abab'] * self.dampers['abab']
         new_t_amps['bbbb'] =\
-            self.t2_bbbb + residuals['bbbb'] * self.dampers['bbbb']
+            self.data.t2_bbbb + residuals['bbbb'] * self.dampers['bbbb']
         # spin-changing terms
         new_t_amps['abba'] =\
-            self.t2_abba + residuals['abba'] * self.dampers['abba']
+            self.data.t2_abba + residuals['abba'] * self.dampers['abba']
         new_t_amps['baab'] =\
-            self.t2_baab + residuals['baab'] * self.dampers['baab']
+            self.data.t2_baab + residuals['baab'] * self.dampers['baab']
         new_t_amps['baba'] =\
-            self.t2_baba + residuals['baba'] * self.dampers['baba']
+            self.data.t2_baba + residuals['baba'] * self.dampers['baba']
 
         return new_t_amps
 
     def get_energy(self) -> float:
         uhf_ccsd_energy = get_energy(
-            intermediates=self.intermediates,
-            t1_aa = self.t1_aa,
-            t1_bb = self.t1_bb,
-            t2_aaaa = self.t2_aaaa,
-            t2_abab = self.t2_abab,
-            t2_bbbb = self.t2_bbbb,
+            uhf_scf_data=self.scf_data,
+            uhf_ccsd_data=self.data,
         )
-
         return float(uhf_ccsd_energy)
 
     def build_dampers(self, shift_1e: float = 0.0, shift_2e: float = 0.0):
@@ -252,14 +245,14 @@ class UHF_CCSD:
         (-fock_aa[a][a] + fock_aa[i][i]) See that the values are attempted to
         be negative bc, the virtual eigenvalues come with a minus sign.
         """
-        oa = self.intermediates.oa
-        va = self.intermediates.va
-        ob = self.intermediates.ob
-        vb = self.intermediates.vb
+        oa = self.scf_data.oa
+        va = self.scf_data.va
+        ob = self.scf_data.ob
+        vb = self.scf_data.vb
         new_axis = np.newaxis
 
-        fock_energy_a = self.intermediates.f_aa.diagonal()
-        fock_energy_b = self.intermediates.f_bb.diagonal()
+        fock_energy_a = self.scf_data.f_aa.diagonal()
+        fock_energy_b = self.scf_data.f_bb.diagonal()
         dampers = {
             'aa': 1.0 / (
                 - fock_energy_a[va, new_axis]

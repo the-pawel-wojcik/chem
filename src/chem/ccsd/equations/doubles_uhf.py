@@ -1,25 +1,27 @@
 from numpy import einsum
 from numpy.typing import NDArray
 from chem.hf.intermediates_builders import Intermediates
+from chem.ccsd.uhf_ccsd import UHF_CCSD_Data
 
 
 def get_doubles_residual_aaaa(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     contracted_intermediate = -1.00 * einsum('ki,bajk->abij', f_aa[oa, oa], t2_aaaa)
     doubles_res_aaaa =  1.00000 * contracted_intermediate + -1.00000 * einsum('abij->abji', contracted_intermediate) 
@@ -108,22 +110,23 @@ def get_doubles_residual_aaaa(
 
 
 def get_doubles_residual_abab(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     doubles_res_abab = -1.00 * einsum('ki,abkj->abij', f_aa[oa, oa], t2_abab)
     doubles_res_abab += -1.00 * einsum('kj,abik->abij', f_bb[ob, ob], t2_abab)
@@ -230,22 +233,23 @@ def get_doubles_residual_abab(
 
 
 def get_doubles_residual_abba(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     doubles_res_abba =  1.00 * einsum('ki,abjk->abij', f_bb[ob, ob], t2_abab)
     doubles_res_abba +=  1.00 * einsum('kj,abki->abij', f_aa[oa, oa], t2_abab)
@@ -352,22 +356,23 @@ def get_doubles_residual_abba(
 
 
 def get_doubles_residual_baab(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     doubles_res_baab =  1.00 * einsum('ki,bakj->abij', f_aa[oa, oa], t2_abab)
     doubles_res_baab +=  1.00 * einsum('kj,baik->abij', f_bb[ob, ob], t2_abab)
@@ -474,22 +479,23 @@ def get_doubles_residual_baab(
 
 
 def get_doubles_residual_baba(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     doubles_res_baba = -1.00 * einsum('ki,bajk->abij', f_bb[ob, ob], t2_abab)
     doubles_res_baba += -1.00 * einsum('kj,baki->abij', f_aa[oa, oa], t2_abab)
@@ -596,22 +602,23 @@ def get_doubles_residual_baba(
 
 
 def get_doubles_residual_bbbb(
-    intermediates: Intermediates,
-    t1_aa: NDArray,
-    t1_bb: NDArray,
-    t2_aaaa: NDArray,
-    t2_abab: NDArray,
-    t2_bbbb: NDArray,
+    uhf_scf_data: Intermediates,
+    uhf_ccsd_data: UHF_CCSD_Data,
 ) -> NDArray:
-    f_aa = intermediates.f_aa
-    f_bb = intermediates.f_bb
-    g_aaaa = intermediates.g_aaaa
-    g_abab = intermediates.g_abab
-    g_bbbb = intermediates.g_bbbb
-    va = intermediates.va
-    vb = intermediates.vb
-    oa = intermediates.oa
-    ob = intermediates.ob
+    f_aa = uhf_scf_data.f_aa
+    f_bb = uhf_scf_data.f_bb
+    g_aaaa = uhf_scf_data.g_aaaa
+    g_abab = uhf_scf_data.g_abab
+    g_bbbb = uhf_scf_data.g_bbbb
+    va = uhf_scf_data.va
+    vb = uhf_scf_data.vb
+    oa = uhf_scf_data.oa
+    ob = uhf_scf_data.ob
+    t1_aa = uhf_ccsd_data.t1_aa
+    t1_bb = uhf_ccsd_data.t1_bb
+    t2_aaaa = uhf_ccsd_data.t2_aaaa
+    t2_abab = uhf_ccsd_data.t2_abab
+    t2_bbbb = uhf_ccsd_data.t2_bbbb
     
     contracted_intermediate = -1.00 * einsum('ki,bajk->abij', f_bb[ob, ob], t2_bbbb)
     doubles_res_bbbb =  1.00000 * contracted_intermediate + -1.00000 * einsum('abij->abji', contracted_intermediate) 
