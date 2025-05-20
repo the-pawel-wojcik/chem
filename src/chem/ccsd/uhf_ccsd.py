@@ -105,19 +105,6 @@ class UHF_CCSD:
         nva = intermediates.nmo - noa
         nob = intermediates.nob
         nvb = intermediates.nmo - nob
-        self.f_aa = intermediates.f_aa
-        self.f_bb = intermediates.f_bb
-        self.g_aaaa = intermediates.g_aaaa
-        self.g_abab = intermediates.g_abab
-        self.g_bbbb = intermediates.g_bbbb
-        self.noa = noa
-        self.nva = nva
-        self.nob = nob
-        self.nvb = nvb
-        self.oa = intermediates.oa
-        self.ob = intermediates.ob
-        self.va = intermediates.va
-        self.vb = intermediates.vb
 
         self.t1_aa = np.zeros(shape=(nva, noa))
         self.t1_bb = np.zeros(shape=(nvb, nob))
