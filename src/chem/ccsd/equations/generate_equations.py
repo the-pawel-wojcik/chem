@@ -135,7 +135,8 @@ def build_singles():
 
 def build_doubles():
     pq = pdaggerq.pq_helper('fermi')
-    pq.set_left_operators([['a*(j)', 'a*(i)', 'a(a)', 'a(b)']])
+    # The order changes everything. Crazy.
+    pq.set_left_operators([['a*(i)', 'a*(j)', 'a(b)', 'a(a)']])
     pq.add_st_operator(1.0, ['f'], ['t1', 't2'])
     pq.add_st_operator(1.0, ['v'], ['t1', 't2'])
     pq.simplify()
