@@ -123,6 +123,9 @@ class UHF_CCSD:
 
         self.dampers = self.build_dampers(shift_1e=0.1)
 
+        # UI
+        self.verbose = 0
+
 
     def solve_cc_equations(self):
         MAX_CCSD_ITER = 50
@@ -167,6 +170,9 @@ class UHF_CCSD:
     def print_iteration_report(
         self, iter_idx, current_energy, energy_change, residuals_norm,
     ):
+        if self.verbose == 0:
+            return
+
         e_fmt = '12.6f'
         print(f"Iteration {iter_idx:>2d}:", end='')
         print(f' {current_energy:{e_fmt}}', end='')
