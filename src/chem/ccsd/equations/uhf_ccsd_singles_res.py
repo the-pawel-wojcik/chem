@@ -1,7 +1,7 @@
 from numpy import einsum
 from numpy.typing import NDArray
 from chem.hf.intermediates_builders import Intermediates
-from chem.ccsd.uhf_ccsd import UHF_CCSD_Data
+from chem.ccsd.containers import UHF_CCSD_Data
 
 
 def get_singles_residual_aa(
