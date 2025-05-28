@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 from chem.ccsd.containers import UHF_CCSD_Data
@@ -20,36 +21,92 @@ from chem.ccsd.equations.util import GeneratorsInput
 from chem.hf.intermediates_builders import Intermediates
 
 
+@dataclass
 class DIIS:
+    """ Direct Inversion in the Iterative Space (DIIS) by P. Pulay.
 
+    [1] P. Pulay, Improved SCF Convergence Acceleration, Journal of
+    Computational Chemistry 3, 556 (1982).
+    [2] P. Pulay, Convergence Acceleration of Iterative Sequences. The Case of
+    SCF Iteration, Chemical Physics Letters 73, 393 (1980).
+    """
     def __init__(self, noa: int, nva: int, nob: int, nvb: int) -> None:
-        self.diis_coefficients = None
-        self.storage_size = 0
+        self.STORAGE_SIZE: int = 10
+        self.START_DIIS_AT_ITER: int = 2
+        self.current_iteration: int = 0
         self.noa = noa
         self.nva = nva
         self.nob = nob
         self.nvb = nvb
-        total_residual_dim = nva * noa + nvb * nob
-        total_residual_dim += nva * nva * noa * noa
-        total_residual_dim += nva * nvb * noa * nob
-        total_residual_dim += nvb * nvb * nob * nob
-        self.residuals_matrix = np.zeros(shape=(total_residual_dim, 0))
-        self.start_idx = 3
+        self.problem_dim = nva * noa + nvb * nob
+        self.problem_dim += nva * nva * noa * noa
+        self.problem_dim += nva * nvb * noa * nob
+        self.problem_dim += nvb * nvb * nob * nob
 
-    def find_new_vec(self, guess, change):
-        if self.storage_size < self.start_idx:
+        # vectors are stored as columns of the matrices
+        # access the last vector with matrix[:, -1]
+        self.residuals_matrix = np.zeros(shape=(self.problem_dim, 0))
+        self.guesses_matrix = np.zeros(shape=(self.problem_dim, 0))
+
+    def find_next_guess(
+        self,
+        guess: dict[str, NDArray],
+        residual: dict[str, NDArray],
+    ) -> dict[str, NDArray]:
+
+        self.residuals_matrix = np.hstack([self.residuals_matrix, residual])
+        self.guesses_matrix = np.hstack([self.guesses_matrix, guess])
+        self.current_iteration += 1
+
+        if self.current_iteration < self.START_DIIS_AT_ITER:
             return guess
 
-        self.add_new_residual(guess)
-        # if len > max_lex self.residuals_matrix.pop(0)
+        # TODO: automate this and don't overstore. Merge this step with the
+        # addition of the new guess/residual.
+        if self.residuals_matrix.shape[1] > self.STORAGE_SIZE:
+            self.residuals_matrix = self.residuals_matrix[:, 1:]
+
+        if self.guesses_matrix.shape[1] > self.STORAGE_SIZE:
+            self.residuals_matrix = self.residuals_matrix[:, 1:]
+
         matrix, rhs = self.build_linear_problem()
         c = np.linalg.solve(matrix, rhs)
         assert self.residuals_matrix.shape[1] == c.shape[0]
         new_guess = self.residuals_matrix @ c
-        return new_guess
+        return self.unfold(new_guess)
 
-    def add_new_residual(self, residuals: dict[str, NDArray]) -> None:
-        """ Hoping that the new residual looks like this
+    def unfold(self, vector):
+        """ Revert the flattening of the input vector, i.e., return somethign
+        like this
+        unfolded = {
+            'aa': NDarray,
+            'bb': NDarray,
+            'aaaa': NDarray,
+            'abab': NDarray,
+            'abba': NDarray,
+            'baab': NDarray,
+            'baba': NDarray,
+            'bbbb': NDarray,
+        }
+        """
+        noa = self.noa
+        nob = self.nob
+        nva = self.nva
+        nvb = self.nvb
+
+    def update_state(
+        self,
+        residuals: dict[str, NDArray],
+        guesses: dict[str, NDArray],
+    ) -> None:
+        """ New iteration begins
+
+        """
+        self.current_iteration += 1
+
+    def _add_new_residual(self, residual):
+        """
+        Hoping that the new residuals/guesses looks like this
         ```
         residuals = {
             'aa': NDarray,
@@ -67,24 +124,30 @@ class DIIS:
         nob = self.nob
         nva = self.nva
         nvb = self.nvb
+
+        if self.residuals_matrix.shape[1] == self.STORAGE_SIZE:
+            current_residuals = self.residuals_matrix[:, 1:]
+        else:
+            current_residuals = self.residuals_matrix
+
+        # TODO: make sure this makes sense
         self.residuals_matrix = np.hstack(
             (
-                self.residuals_matrix,
-                np.hstack(
+                current_residuals,
+                np.vstack(
                     (
-                        residuals['aa'].reshape(nva * noa),
-                        residuals['bb'].reshape(nvb * nob),
-                        residuals['aaaa'].reshape(nva * nva * noa * noa),
-                        residuals['abab'].reshape(nva * nvb * noa * nob),
-                        residuals['bbbb'].reshape(nvb * nvb * nob * nob),
+                        residual['aa'].reshape(nva * noa),
+                        residual['bb'].reshape(nvb * nob),
+                        residual['aaaa'].reshape(nva * nva * noa * noa),
+                        residual['abab'].reshape(nva * nvb * noa * nob),
+                        residual['bbbb'].reshape(nvb * nvb * nob * nob),
                     )
                 ).reshape(-1, 1),
             )
         )
-        self.storage_size += 1
 
     def build_linear_problem(self) -> tuple[NDArray, NDArray]:
-        dim = len(self.residuals_matrix[-1])
+        dim = self.problem_dim
         matrix = self.residuals_matrix @ self.residuals_matrix.T
         matrix = np.vstack((
             matrix,
