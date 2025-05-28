@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import functools
 import numpy as np
 from numpy.typing import NDArray
 from chem.ccsd.containers import UHF_CCSD_Data
@@ -22,14 +23,13 @@ from chem.hf.intermediates_builders import Intermediates
 
 
 @dataclass
-class DIIS:
+class Alt_DIIS:
     """ Direct Inversion in the Iterative Space (DIIS) by P. Pulay.
 
-    [1] P. Pulay, Improved SCF Convergence Acceleration, Journal of
-    Computational Chemistry 3, 556 (1982).
-    [2] P. Pulay, Convergence Acceleration of Iterative Sequences. The Case of
+    [1] P. Pulay, Convergence Acceleration of Iterative Sequences. The Case of
     SCF Iteration, Chemical Physics Letters 73, 393 (1980).
     """
+
     def __init__(self, noa: int, nva: int, nob: int, nvb: int) -> None:
         self.STORAGE_SIZE: int = 10
         self.START_DIIS_AT_ITER: int = 2
@@ -38,10 +38,10 @@ class DIIS:
         self.nva = nva
         self.nob = nob
         self.nvb = nvb
-        self.problem_dim = nva * noa + nvb * nob
-        self.problem_dim += nva * nva * noa * noa
-        self.problem_dim += nva * nvb * noa * nob
-        self.problem_dim += nvb * nvb * nob * nob
+        self.problem_dim = nva * noa + nvb * nob   # aa + bb
+        self.problem_dim += nva * nva * noa * noa  # aaaa
+        self.problem_dim += nva * nvb * noa * nob  # abab
+        self.problem_dim += nvb * nvb * nob * nob  # bbbb
 
         # vectors are stored as columns of the matrices
         # access the last vector with matrix[:, -1]
@@ -54,61 +54,256 @@ class DIIS:
         residual: dict[str, NDArray],
     ) -> dict[str, NDArray]:
 
-        self.residuals_matrix = np.hstack([self.residuals_matrix, residual])
-        self.guesses_matrix = np.hstack([self.guesses_matrix, guess])
-        self.current_iteration += 1
+        self.update_state(residual, guess)
 
         if self.current_iteration < self.START_DIIS_AT_ITER:
             return guess
 
-        # TODO: automate this and don't overstore. Merge this step with the
-        # addition of the new guess/residual.
-        if self.residuals_matrix.shape[1] > self.STORAGE_SIZE:
-            self.residuals_matrix = self.residuals_matrix[:, 1:]
-
-        if self.guesses_matrix.shape[1] > self.STORAGE_SIZE:
-            self.residuals_matrix = self.residuals_matrix[:, 1:]
-
         matrix, rhs = self.build_linear_problem()
+        np.set_printoptions(precision=3)
         c = np.linalg.solve(matrix, rhs)
-        assert self.residuals_matrix.shape[1] == c.shape[0]
-        new_guess = self.residuals_matrix @ c
-        return self.unfold(new_guess)
-
-    def unfold(self, vector):
-        """ Revert the flattening of the input vector, i.e., return somethign
-        like this
-        unfolded = {
-            'aa': NDarray,
-            'bb': NDarray,
-            'aaaa': NDarray,
-            'abab': NDarray,
-            'abba': NDarray,
-            'baab': NDarray,
-            'baba': NDarray,
-            'bbbb': NDarray,
-        }
-        """
-        noa = self.noa
-        nob = self.nob
-        nva = self.nva
-        nvb = self.nvb
+        coefficients = c[:-1, :]
+        assert self.guesses_matrix.shape[1] == coefficients.shape[0]
+        new_guess = self.guesses_matrix @ coefficients
+        return self._unflatten(new_guess, self.save_for_later_guess)
 
     def update_state(
         self,
-        residuals: dict[str, NDArray],
-        guesses: dict[str, NDArray],
+        new_residual: dict[str, NDArray],
+        new_guess: dict[str, NDArray],
     ) -> None:
-        """ New iteration begins
-
-        """
         self.current_iteration += 1
 
-    def _add_new_residual(self, residual):
-        """
-        Hoping that the new residuals/guesses looks like this
+        self.blocks_in_use = {'aa', 'bb', 'aaaa', 'abab', 'bbbb'}
+
+        self.residuals_matrix, self.save_for_later_res = self._add_new_vector(
+            self.residuals_matrix, new_residual
+        )
+        self.guesses_matrix, self.save_for_later_guess = self._add_new_vector(
+            self.guesses_matrix, new_guess
+        )
+
+    def _add_new_vector(
+        self,
+        vectors_store: NDArray,
+        new_vector: dict[str, NDArray],
+    ) -> tuple[NDArray, dict[str, NDArray]]:
+        """ Flattens the new_vector and adds it to the storage. """
+
+        if vectors_store.shape[1] == self.STORAGE_SIZE:
+            current_store = vectors_store[:, 1:]
+        else:
+            current_store = vectors_store
+
+        flattened_vector, save_for_later = self._flatten(new_vector)
+        vectors_store = np.hstack(
+            (current_store, flattened_vector)
+        )
+        return vectors_store, save_for_later
+
+    def _flatten(
+        self, new_vector: dict[str, NDArray],
+    ) -> tuple[NDArray, dict[str, NDArray]]:
+        noa = self.noa
+        nob = self.nob
+        nva = self.nva
+        nvb = self.nvb
+
+        flattened_vector = np.hstack(
+            (
+                new_vector['aa'].reshape(nva * noa),
+                new_vector['bb'].reshape(nvb * nob),
+                new_vector['aaaa'].reshape(nva * nva * noa * noa),
+                new_vector['abab'].reshape(nva * nvb * noa * nob),
+                new_vector['bbbb'].reshape(nvb * nvb * nob * nob),
+            )
+        ).reshape(-1, 1)
+
+        save_for_later  = {
+            block: new_vector[block] 
+            for block in (set(new_vector.keys()) - self.blocks_in_use)
+        }
+
+        return flattened_vector, save_for_later
+
+    def _unflatten(
+        self,
+        vector: NDArray,
+        saved_reminder: None | dict[str, NDArray] = None,
+    ) -> dict[str, NDArray]:
+        """ Revert the `_flatten`, i.e., return something like this:
         ```
-        residuals = {
+        {
+            'aa': NDarray,
+            'bb': NDarray,
+            'aaaa': NDarray,
+            'abab': NDarray,
+            'abba': NDarray,
+        }
+        ```
+        """
+        noa = self.noa
+        nob = self.nob
+        nva = self.nva
+        nvb = self.nvb
+
+        blocks = [
+            'aa', 'bb', 'aaaa', 'abab', 'bbbb',
+        ]
+
+        shapes = {
+            'aa': (nva, noa),
+            'bb': (nvb, nob),
+            'aaaa': (nva, nva, noa, noa),
+            'abab': (nva, nvb, noa, nob),
+            'bbbb': (nvb, nvb, nob, nob),
+        }
+
+        dims = {
+            block: functools.reduce(lambda x, y: x * y, shapes[block],1)
+            for block in blocks
+        }
+
+        dim_sum = 0
+        slices = {}
+        for block in blocks:
+            block_dim = dims[block]
+            slices[block] = slice(dim_sum, dim_sum + block_dim)
+            dim_sum += block_dim
+
+        assert len(vector.shape) == 2
+        assert vector.shape[0] == dim_sum
+        assert vector.shape[1] == 1
+
+        unflatten = {
+            block: vector[slices[block]].reshape(shapes[block])
+            for block in blocks
+        }
+
+        if saved_reminder is not None:
+            unflatten = unflatten | saved_reminder
+
+        return unflatten
+
+    def build_linear_problem(self) -> tuple[NDArray, NDArray]:
+        b_matrix_dim = self.residuals_matrix.shape[1]
+        matrix = self.residuals_matrix.T @ self.residuals_matrix
+        matrix = np.vstack((
+            matrix,
+            -1 * np.ones((1, b_matrix_dim))
+        ))
+        matrix = np.hstack((
+            matrix, -1 * np.ones((b_matrix_dim + 1, 1))
+        ))
+        matrix[-1][-1] = 0.0
+        rhs = np.zeros((b_matrix_dim + 1, 1))
+        rhs[-1, 0] = -1
+        return matrix, rhs
+
+
+@dataclass
+class DIIS:
+    """ Direct Inversion in the Iterative Space (DIIS) by P. Pulay.
+
+    [1] P. Pulay, Convergence Acceleration of Iterative Sequences. The Case of
+    SCF Iteration, Chemical Physics Letters 73, 393 (1980).
+    """
+    def __init__(self, noa: int, nva: int, nob: int, nvb: int) -> None:
+        self.STORAGE_SIZE: int = 10
+        self.START_DIIS_AT_ITER: int = 2
+        self.current_iteration: int = 0
+        self.noa = noa
+        self.nva = nva
+        self.nob = nob
+        self.nvb = nvb
+        self.problem_dim = nva * noa + nvb * nob   # aa + bb
+        self.problem_dim += nva * nva * noa * noa  # aaaa
+        self.problem_dim += nva * nvb * noa * nob  # abab
+        self.problem_dim += nvb * nvb * nob * nob  # bbbb
+        # Extra terms
+        self.problem_dim += nva * nvb * nob * noa  # abba
+        self.problem_dim += nvb * nva * noa * nob  # baab
+        self.problem_dim += nvb * nva * nob * noa  # baba
+
+        # vectors are stored as columns of the matrices
+        # access the last vector with matrix[:, -1]
+        self.residuals_matrix = np.zeros(shape=(self.problem_dim, 0))
+        self.guesses_matrix = np.zeros(shape=(self.problem_dim, 0))
+
+    def find_next_guess(
+        self,
+        guess: dict[str, NDArray],
+        residual: dict[str, NDArray],
+    ) -> dict[str, NDArray]:
+
+        self.update_state(residual, guess)
+
+        if self.current_iteration < self.START_DIIS_AT_ITER:
+            return guess
+
+        matrix, rhs = self.build_linear_problem()
+        np.set_printoptions(precision=3)
+        c = np.linalg.solve(matrix, rhs)
+        coefficients = c[:-1, :]
+        assert self.guesses_matrix.shape[1] == coefficients.shape[0]
+        new_guess = self.guesses_matrix @ coefficients
+        return self._unflatten(new_guess)
+
+    def update_state(
+        self,
+        new_residual: dict[str, NDArray],
+        new_guess: dict[str, NDArray],
+    ) -> None:
+        self.current_iteration += 1
+        self.residuals_matrix = self._add_new_vector(
+            self.residuals_matrix, new_residual
+        )
+        self.guesses_matrix = self._add_new_vector(
+            self.guesses_matrix, new_guess
+        )
+
+    def _add_new_vector(
+        self,
+        vectors_store: NDArray,
+        new_vector: dict[str, NDArray]
+    ) -> NDArray:
+        """ Flattens the new_vector and adds it to the storage. """
+
+        if vectors_store.shape[1] == self.STORAGE_SIZE:
+            current_store = vectors_store[:, 1:]
+        else:
+            current_store = vectors_store
+
+        flattened_vector = self._flatten(new_vector)
+        vectors_store = np.hstack(
+            (current_store, flattened_vector)
+        )
+        return vectors_store
+
+    def _flatten(self, new_vector: dict[str, NDArray]) -> NDArray:
+        noa = self.noa
+        nob = self.nob
+        nva = self.nva
+        nvb = self.nvb
+        flattened_vector = np.hstack(
+            (
+                new_vector['aa'].reshape(nva * noa),
+                new_vector['bb'].reshape(nvb * nob),
+                new_vector['aaaa'].reshape(nva * nva * noa * noa),
+                new_vector['abab'].reshape(nva * nvb * noa * nob),
+                new_vector['bbbb'].reshape(nvb * nvb * nob * nob),
+                # spin-changing terms
+                new_vector['abba'].reshape(nva * nvb * nob * noa),
+                new_vector['baab'].reshape(nvb * nva * noa * nob), 
+                new_vector['baba'].reshape(nvb * nva * nob * noa),
+            )
+        ).reshape(-1, 1)
+        return flattened_vector
+
+    def _unflatten(self, vector: NDArray) -> dict[str, NDArray]:
+        """ Revert the `_flatten`, i.e., return something like this:
+        ```
+        {
             'aa': NDarray,
             'bb': NDarray,
             'aaaa': NDarray,
@@ -125,46 +320,71 @@ class DIIS:
         nva = self.nva
         nvb = self.nvb
 
-        if self.residuals_matrix.shape[1] == self.STORAGE_SIZE:
-            current_residuals = self.residuals_matrix[:, 1:]
-        else:
-            current_residuals = self.residuals_matrix
+        blocks = [
+            'aa', 'bb', 'aaaa', 'abab', 'bbbb',
+            # redundant terms
+            'abba', 'baab', 'baba',
+        ]
 
-        # TODO: make sure this makes sense
-        self.residuals_matrix = np.hstack(
-            (
-                current_residuals,
-                np.vstack(
-                    (
-                        residual['aa'].reshape(nva * noa),
-                        residual['bb'].reshape(nvb * nob),
-                        residual['aaaa'].reshape(nva * nva * noa * noa),
-                        residual['abab'].reshape(nva * nvb * noa * nob),
-                        residual['bbbb'].reshape(nvb * nvb * nob * nob),
-                    )
-                ).reshape(-1, 1),
-            )
-        )
+        shapes = {
+            'aa': (nva, noa),
+            'bb': (nvb, nob),
+            'aaaa': (nva, nva, noa, noa),
+            'abab': (nva, nvb, noa, nob),
+            'bbbb': (nvb, nvb, nob, nob),
+            'abba': (nva, nvb, nob, noa),
+            'baab': (nvb, nva, noa, nob),
+            'baba': (nvb, nva, nob, noa),
+        }
+
+        dims = {
+            block: functools.reduce(lambda x, y: x * y, shapes[block],1)
+            for block in blocks
+        }
+
+        dim_sum = 0
+        slices = {}
+        for block in blocks:
+            block_dim = dims[block]
+            slices[block] = slice(dim_sum, dim_sum + block_dim)
+            dim_sum += block_dim
+
+        assert len(vector.shape) == 2
+        assert vector.shape[0] == dim_sum
+        assert vector.shape[1] == 1
+
+        unflatten = {
+            block: vector[slices[block]].reshape(shapes[block])
+            for block in blocks
+        }
+
+        return unflatten
 
     def build_linear_problem(self) -> tuple[NDArray, NDArray]:
-        dim = self.problem_dim
-        matrix = self.residuals_matrix @ self.residuals_matrix.T
+        b_matrix_dim = self.residuals_matrix.shape[1]
+        matrix = self.residuals_matrix.T @ self.residuals_matrix
         matrix = np.vstack((
             matrix,
-            -1 * np.ones((1, dim))
+            -1 * np.ones((1, b_matrix_dim))
         ))
         matrix = np.hstack((
-            matrix, -1 * np.ones((dim + 1, 1))
+            matrix, -1 * np.ones((b_matrix_dim + 1, 1))
         ))
         matrix[-1][-1] = 0.0
-        rhs = np.zeros((dim + 1, 1))
-        rhs[-1][0] = -1
+        rhs = np.zeros((b_matrix_dim + 1, 1))
+        rhs[-1, 0] = -1
         return matrix, rhs
 
 
 class UHF_CCSD:
 
-    def __init__(self, scf_data: Intermediates) -> None:
+    def __init__(
+        self,
+        scf_data: Intermediates,
+        shift_1e: float = 0.0,
+        shift_2e: float = 0.0,
+        use_diis: bool = True,
+    ) -> None:
         self.scf_data = scf_data
         noa = scf_data.noa
         nva = scf_data.nmo - noa
@@ -184,7 +404,13 @@ class UHF_CCSD:
             t2_baba = np.zeros(shape=(nvb, nva, nob, noa)),
         )
 
-        self.dampers = self.build_dampers(shift_1e=0.1)
+        self.dampers = self.build_dampers(shift_1e=shift_1e, shift_2e=shift_2e)
+        
+        if use_diis is True:
+            self.diis = DIIS(noa, nva, nob, nvb)
+            # self.diis = Alt_DIIS(noa, nva, nob, nvb)
+        else:
+            self.diis = None
 
         # UI
         self.verbose = 0
@@ -198,16 +424,19 @@ class UHF_CCSD:
         # diis = DIIS(noa=self.noa, nva=self.nva, nob=self.nob, nvb=self.nvb)
 
         for iter_idx in range(MAX_CCSD_ITER):
+            old_energy = self.get_energy()
+
             residuals = self.calculate_residuals()
             new_t_amps = self.calculate_new_amplitudes(residuals)
-
-            old_energy = self.get_energy()
+            if self.diis is not None:
+                new_t_amps = self.diis.find_next_guess(new_t_amps, residuals)
             self.update_t_amps(new_t_amps)
-            current_energy = self.get_energy()
-            energy_change = current_energy - old_energy
+
+            new_energy = self.get_energy()
+            energy_change = new_energy - old_energy
             residuals_norm = self.get_residuals_norm(residuals)
             self.print_iteration_report(
-                iter_idx + 1, current_energy, energy_change, residuals_norm
+                iter_idx, new_energy, energy_change, residuals_norm,
             )
 
             energy_converged = np.abs(energy_change) < ENERGY_CONVERGENCE
@@ -215,7 +444,6 @@ class UHF_CCSD:
 
             if energy_converged and residuals_converged:
                 break
-            old_energy = current_energy
         else:
             raise RuntimeError("CCSD didn't converge")
 
@@ -237,10 +465,14 @@ class UHF_CCSD:
             return
 
         e_fmt = '12.6f'
-        print(f"Iteration {iter_idx:>2d}:", end='')
+        print(f"Iteration {iter_idx + 1:>2d}:", end='')
         print(f' {current_energy:{e_fmt}}', end='')
         print(f' {energy_change:{e_fmt}}', end='')
-        print(f' {residuals_norm:{e_fmt}}')
+        print(f' {residuals_norm:{e_fmt}}', end='')
+        if self.diis is not None:
+            if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
+                print(' DIIS', end='')
+        print('')
 
     def update_t_amps(self, new_t_amps):
         self.data.t1_aa = new_t_amps['aa']

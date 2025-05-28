@@ -5,7 +5,7 @@ from chem.ccsd.uhf_ccsd import UHF_CCSD
 
 mol, scf_energy, wfn = scf()
 intermediates = extract_intermediates(wfn)
-ccsd = UHF_CCSD(intermediates, use_diis=False)
+ccsd = UHF_CCSD(intermediates)
 ccsd.verbose = 1
 ccsd.solve_cc_equations()
 
