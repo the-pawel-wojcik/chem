@@ -51,12 +51,14 @@ def print_function_header(quantity: str, spin_subscript: str = '') -> None:
 
 
 def numpy_print_singles_uhf(pq):
+    tensor_name = 'lambda_singles_res'
     print_imports()
     for spin_mix in itertools.product(['a', 'b'], repeat=2):
         spin_labels = {
-            'a': spin_mix[0],
-            'i': spin_mix[1],
+            'i': spin_mix[0],
+            'a': spin_mix[1],
         }
+        spin_subscript = ''.join(spin_labels.values())
 
         terms = pq.strings(spin_labels=spin_labels)
         tensor_terms = contracted_strings_to_tensor_terms(terms)
@@ -64,13 +66,14 @@ def numpy_print_singles_uhf(pq):
             continue
 
         print_function_header(
-            quantity='lambda_singles_residual',
-            spin_subscript=''.join(spin_mix)
+            quantity=tensor_name,
+            spin_subscript=spin_subscript,
         )
-        out_var = 'lambda_singles_res_' + ''.join(spin_mix)
+        out_var = tensor_name + '_' + spin_subscript
+        output_variables = tuple(spin for spin in spin_labels)
         for my_term in tensor_terms:
             einsum_terms = my_term.einsum_string(
-                output_variables=('a', 'i'),
+                output_variables=output_variables,
                 update_val=out_var,
             )
             print(f"{TAB}{einsum_terms}")
@@ -82,10 +85,10 @@ def numpy_print_doubles_uhf(pq):
     print_imports()
     for spin_mix in itertools.product(['a', 'b'], repeat=4):
         spin_labels = {
-            'a': spin_mix[0],
-            'b': spin_mix[1],
-            'i': spin_mix[2],
-            'j': spin_mix[3],
+            'i': spin_mix[0],
+            'j': spin_mix[1],
+            'b': spin_mix[2],
+            'a': spin_mix[3],
         }
 
         terms = pq.strings(spin_labels=spin_labels)
@@ -99,10 +102,11 @@ def numpy_print_doubles_uhf(pq):
             spin_subscript=spin_subscript,
         )
 
+        output_variables = tuple(spin for spin in spin_labels)
         out_var = tensor_name + '_' + spin_subscript
         for my_term in tensor_terms:
             einsum_terms = my_term.einsum_string(
-                output_variables=('a', 'b', 'j', 'i'),
+                output_variables=output_variables,
                 update_val=out_var
             )
             for print_term in einsum_terms.split('\n'):
