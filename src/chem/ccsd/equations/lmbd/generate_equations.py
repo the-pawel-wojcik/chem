@@ -87,8 +87,8 @@ def numpy_print_doubles_uhf(pq):
         spin_labels = {
             'i': spin_mix[0],
             'j': spin_mix[1],
-            'b': spin_mix[2],
-            'a': spin_mix[3],
+            'a': spin_mix[2],
+            'b': spin_mix[3],
         }
 
         terms = pq.strings(spin_labels=spin_labels)
