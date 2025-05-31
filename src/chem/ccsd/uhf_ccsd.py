@@ -493,10 +493,6 @@ class UHF_CCSD:
             l2_bbbb=self.data.t2_bbbb.copy().transpose((2, 3, 0, 1)),
         )
 
-        import sys 
-        print(f'{self.data.lmbda.l1_aa.shape=}', file=sys.stderr)
-        print(f'{self.data.lmbda.l2_aaaa.shape=}', file=sys.stderr)
-
     def get_residuals_norm(self, residuals):
         return sum(np.linalg.norm(residual) for residual in residuals.values())
 
@@ -702,15 +698,16 @@ class UHF_CCSD:
         new_lambdas['bb'] = ( lmbda.l1_bb 
              + residuals['bb'] * dampers['bb'].transpose((1, 0)) )
 
+        its_oovv_now = (2, 3, 0, 1)
         new_lambdas['aaaa'] = (
             lmbda.l2_aaaa 
-            + residuals['aaaa'] * dampers['aaaa'].transpose((2, 3, 0, 1)) )
+            + residuals['aaaa'] * dampers['aaaa'].transpose(its_oovv_now) )
         new_lambdas['abab'] = (
             lmbda.l2_abab
-            + residuals['abab'] * dampers['abab'].transpose((2, 3, 0, 1)) )
+            + residuals['abab'] * dampers['abab'].transpose(its_oovv_now) )
         new_lambdas['bbbb'] = (
             lmbda.l2_bbbb
-            + residuals['bbbb'] * dampers['bbbb'].transpose((2, 3, 0, 1)) )
+            + residuals['bbbb'] * dampers['bbbb'].transpose(its_oovv_now) )
 
         return new_lambdas
 
