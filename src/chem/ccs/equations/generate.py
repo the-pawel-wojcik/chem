@@ -1,4 +1,5 @@
 import pdaggerq
+import itertools
 from pdaggerq.parser import contracted_strings_to_tensor_terms
 
 
@@ -60,5 +61,39 @@ def energy():
     print(f'{TAB}return {tensor_name}')
 
 
+def singles():
+    tensor_name = 'uhf_ccs_singles_residuals'
+    tensor_subscripts = ('a', 'i')
+
+    pq = pdaggerq.pq_helper('fermi')
+    pq.set_left_operators([['e1(i,a)']])
+    pq.add_st_operator(1.0, ['f'], ['t1'])
+    pq.add_st_operator(1.0, ['v'], ['t1'])
+    pq.simplify()
+
+    print_imports()
+    subscripts_count = len(tensor_subscripts)
+    for spin_mix in itertools.product(['a', 'b'], repeat=subscripts_count):
+        spin_labels = {
+            subscript: spin_mix[idx] for idx, subscript
+            in enumerate(tensor_subscripts)
+        }
+        strings = pq.strings(spin_labels=spin_labels)
+        if len(strings) == 0:
+            continue
+        tensor_terms = contracted_strings_to_tensor_terms(strings)
+        spin_subscript = ''.join(spin_mix)
+        out_var_name = tensor_name + '_' + spin_subscript
+        print_function_header(out_var_name)
+        for tensor in tensor_terms:
+            numpyfied = tensor.einsum_string(
+                output_variables=tuple(tensor_subscripts),
+                update_val=out_var_name,
+            )
+            print(f'{TAB}{numpyfied}')
+        print(f'{TAB}return {out_var_name}')
+
+
 if __name__ == '__main__':
-    energy()
+    # energy()
+    singles()
