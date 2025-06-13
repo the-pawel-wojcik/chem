@@ -55,8 +55,8 @@ class UHF_CCS:
 
             residuals = self._calculate_residuals()
             new_t_amps = self._calculate_new_amplitudes(residuals)
-            # if self.diis is not None:
-            #     new_t_amps = self.diis.find_next_guess(new_t_amps, residuals)
+            if self.diis is not None:
+                new_t_amps = self.diis.find_next_guess(new_t_amps, residuals)
             self._update_t_amps(new_t_amps)
 
             new_energy = self.get_energy()
