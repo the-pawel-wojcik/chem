@@ -5,18 +5,18 @@ from chem.ccs.containers import UHF_CCS_Data
 
 
 def get_uhf_ccs_singles_residuals_aa(
-    uhf_scf_data: Intermediates,
+    uhf_data: Intermediates,
     uhf_ccs_data: UHF_CCS_Data,
 ) -> NDArray:
-    f_aa = uhf_scf_data.f_aa
-    f_bb = uhf_scf_data.f_bb
-    g_aaaa = uhf_scf_data.g_aaaa
-    g_abab = uhf_scf_data.g_abab
-    g_bbbb = uhf_scf_data.g_bbbb
-    va = uhf_scf_data.va
-    vb = uhf_scf_data.vb
-    oa = uhf_scf_data.oa
-    ob = uhf_scf_data.ob
+    f_aa = uhf_data.f_aa
+    f_bb = uhf_data.f_bb
+    g_aaaa = uhf_data.g_aaaa
+    g_abab = uhf_data.g_abab
+    g_bbbb = uhf_data.g_bbbb
+    va = uhf_data.va
+    vb = uhf_data.vb
+    oa = uhf_data.oa
+    ob = uhf_data.ob
     t1_aa = uhf_ccs_data.t1_aa
     t1_bb = uhf_ccs_data.t1_bb
     
@@ -36,18 +36,18 @@ def get_uhf_ccs_singles_residuals_aa(
 
 
 def get_uhf_ccs_singles_residuals_bb(
-    uhf_scf_data: Intermediates,
+    uhf_data: Intermediates,
     uhf_ccs_data: UHF_CCS_Data,
 ) -> NDArray:
-    f_aa = uhf_scf_data.f_aa
-    f_bb = uhf_scf_data.f_bb
-    g_aaaa = uhf_scf_data.g_aaaa
-    g_abab = uhf_scf_data.g_abab
-    g_bbbb = uhf_scf_data.g_bbbb
-    va = uhf_scf_data.va
-    vb = uhf_scf_data.vb
-    oa = uhf_scf_data.oa
-    ob = uhf_scf_data.ob
+    f_aa = uhf_data.f_aa
+    f_bb = uhf_data.f_bb
+    g_aaaa = uhf_data.g_aaaa
+    g_abab = uhf_data.g_abab
+    g_bbbb = uhf_data.g_bbbb
+    va = uhf_data.va
+    vb = uhf_data.vb
+    oa = uhf_data.oa
+    ob = uhf_data.ob
     t1_aa = uhf_ccs_data.t1_aa
     t1_bb = uhf_ccs_data.t1_bb
     

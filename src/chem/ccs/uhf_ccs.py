@@ -120,7 +120,7 @@ class UHF_CCS:
         residuals = dict()
 
         kwargs = UHF_CCS_InputPair(
-            uhf_scf_data=self.scf_data,
+            uhf_data=self.scf_data,
             uhf_ccs_data=self.data,
         )
 

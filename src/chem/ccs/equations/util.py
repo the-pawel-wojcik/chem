@@ -4,7 +4,7 @@ from chem.hf.intermediates_builders import Intermediates
 
 
 class UHF_CCS_InputPair(TypedDict):
-    uhf_scf_data: Intermediates
+    uhf_data: Intermediates
     uhf_ccs_data: UHF_CCS_Data
 
 
