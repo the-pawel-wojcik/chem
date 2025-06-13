@@ -1,12 +1,16 @@
 from chem.hf.intermediates_builders import Intermediates
-from chem.ccs.containers import UHF_CCS_Data
+from chem.ccs.containers import UHF_CCS_Data, UHF_CCS_Lambda_Data
 import numpy as np
 from numpy.typing import NDArray
 from chem.ccs.equations.energy import get_ccs_energy
-from chem.ccs.equations.util import UHF_CCS_InputPair
+from chem.ccs.equations.util import UHF_CCS_InputPair, UHF_CCS_InputTriple
 from chem.ccs.equations.uhf_ccs_singles import (
     get_uhf_ccs_singles_residuals_aa,
     get_uhf_ccs_singles_residuals_bb,
+)
+from chem.ccs.equations.lmbd.uhf_ccs_lmbd_singles_res import (
+    get_uhf_ccs_lambda_singles_res_aa,
+    get_uhf_ccs_lambda_singles_res_bb,
 )
 
 
@@ -28,7 +32,10 @@ class UHF_CCS:
             t1_aa = np.zeros(shape=(nva, noa)),
             t1_bb = np.zeros(shape=(nvb, nob)),
         )
-
+        self.cc_lambda_data = UHF_CCS_Lambda_Data(
+            l1_aa=np.zeros(shape=(noa, nva)),
+            l1_bb=np.zeros(shape=(noa, nva)),
+        )
         self._dampers = self._build_dampers(shift_1e=shift_1e)
 
         self.cc_solved = False
@@ -44,13 +51,17 @@ class UHF_CCS:
         # UI
         self.verbose = 0
 
+    def get_energy(self) -> float:
+        uhf_ccs_energy = get_ccs_energy(self.scf_data, self.data)
+        return float(uhf_ccs_energy)
 
-    def solve_cc_equations(self):
-        MAX_CCSD_ITER = 50
+    def solve_cc_equations(self) -> None:
+        """The CCS equations are solved by T = 0. So all of this is useless."""
+        MAX_CCS_ITER = 50
         ENERGY_CONVERGENCE = 1e-10
         RESIDUALS_CONVERGENCE = 1e-10
 
-        for iter_idx in range(MAX_CCSD_ITER):
+        for iter_idx in range(MAX_CCS_ITER):
             old_energy = self.get_energy()
 
             residuals = self._calculate_residuals()
@@ -72,12 +83,33 @@ class UHF_CCS:
             if energy_converged and residuals_converged:
                 break
         else:
-            raise RuntimeError("CCSD didn't converge")
+            raise RuntimeError("UHF-CCS didn't converge.")
         self.cc_solved = True
 
-    def get_energy(self) -> float:
-        uhf_ccs_energy = get_ccs_energy(self.scf_data, self.data)
-        return float(uhf_ccs_energy)
+    def solve_lambda_equations(self) -> None:
+        """Unnecessary: for T=0, CCS-Lambda are solved by L=0."""
+        MAX_CCS_LAMBDA_ITER = 50
+        RESIDUALS_CONVERGENCE = 1e-10
+
+        if self.cc_solved is False:
+            self.solve_cc_equations()
+
+        for iter_idx in range(MAX_CCS_LAMBDA_ITER):
+
+            residuals = self._calculate_lambda_residuals()
+            new_lambdas = self._calculate_new_lambdas(residuals)
+            if self.diis is not None:
+                new_lambdas = self.diis.find_next_guess(new_lambdas, residuals)
+            self._update_lambdas(new_lambdas)
+
+            residuals_norm = self._get_residuals_norm(residuals)
+            self._print_lambda_iteration_report(iter_idx, residuals_norm)
+            residuals_converged = residuals_norm < RESIDUALS_CONVERGENCE
+            if residuals_converged:
+                break
+        else:
+            raise RuntimeError("UHF-CCS-Lambda equations didn't converge.")
+        self.lambda_cc_solved = True
 
     def _get_residuals_norm(self, residuals: dict[str, NDArray]) -> float:
         return float(sum(
@@ -150,6 +182,44 @@ class UHF_CCS:
 
         return dampers
 
+    def _calculate_lambda_residuals(self) -> dict[str, NDArray]:
+        residuals = dict()
+
+        kwargs = UHF_CCS_InputTriple(
+            uhf_data=self.scf_data,
+            uhf_ccs_data=self.data,
+            uhf_ccs_lambda_data=self.cc_lambda_data,
+        )
+
+        residuals['aa'] = get_uhf_ccs_lambda_singles_res_aa(**kwargs)
+        residuals['bb'] = get_uhf_ccs_lambda_singles_res_bb(**kwargs)
+
+        return residuals
+
+    def _calculate_new_lambdas(
+        self,
+        residuals: dict[str, NDArray],
+    ) -> dict[str, NDArray]:
+        new_lambdas = dict()
+        if self.cc_lambda_data is None:
+            raise RuntimeError("UHF-CCS-Lambda uninitialized.")
+
+        lmbda = self.cc_lambda_data
+        dampers = self._dampers
+
+        new_lambdas['aa'] = (
+            lmbda.l1_aa + residuals['aa'] * dampers['aa'].transpose((1, 0))
+        )
+        new_lambdas['bb'] = (
+            lmbda.l1_bb + residuals['bb'] * dampers['bb'].transpose((1, 0))
+        )
+
+        return new_lambdas
+
+    def _update_lambdas(self, new_lambdas: dict[str, NDArray]) -> None:
+        self.cc_lambda_data.l1_aa = new_lambdas['aa']
+        self.cc_lambda_data.l1_bb = new_lambdas['bb']
+
     def _print_iteration_report(
         self,
         iter_idx: int,
@@ -164,6 +234,22 @@ class UHF_CCS:
         print(f"Iteration {iter_idx + 1:>2d}:", end='')
         print(f' {current_energy:{e_fmt}}', end='')
         print(f' {energy_change:{e_fmt}}', end='')
+        print(f' {residuals_norm:{e_fmt}}', end='')
+        if self.diis is not None:
+            if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
+                print(' DIIS', end='')
+        print('')
+
+    def _print_lambda_iteration_report(
+        self,
+        iter_idx: int,
+        residuals_norm: float,
+    ) -> None:
+        if self.verbose == 0:
+            return
+
+        e_fmt = '12.6f'
+        print(f"Iteration {iter_idx + 1:>2d}:", end='')
         print(f' {residuals_norm:{e_fmt}}', end='')
         if self.diis is not None:
             if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:

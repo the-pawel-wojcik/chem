@@ -1,6 +1,7 @@
 import math
 import pickle
 
+from chem.ccs.containers import UHF_CCS_Lambda_Data
 from chem.ccs.uhf_ccs import UHF_CCS
 from chem.hf.intermediates_builders import Intermediates
 import numpy as np
@@ -37,5 +38,25 @@ def test_cc_equations():
     assert math.isclose(-76.0270535127, uhf_ccs_total, abs_tol=1e-8)
 
 
+def test_cc_lambda_equations():
+    with open('pickles/h2o_uhf_ccpVDZ.pickle', 'rb') as pickle_file:
+        data = pickle.load(pickle_file)
+
+    uhf_data: Intermediates = data['uhf_data']
+    ccs = UHF_CCS(scf_data=uhf_data, use_diis=False)
+    ccs.verbose = 1
+    ccs.solve_cc_equations()
+    ccs.solve_lambda_equations()
+    uhf_ccs_lambda_data: UHF_CCS_Lambda_Data = ccs.cc_lambda_data
+    lambda_norm = float(
+        sum(
+            np.linalg.norm(spin_component) for spin_component in
+            [uhf_ccs_lambda_data.l1_aa, uhf_ccs_lambda_data.l1_bb]
+        )
+    )
+    assert math.isclose(lambda_norm, 0., abs_tol=1e-8)
+
+
 if __name__ == "__main__":
-    test_cc_equations()
+    # test_cc_equations()
+    test_cc_lambda_equations()
