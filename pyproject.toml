@@ -23,29 +23,5 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/the-pawel-wojcik/chem"
 
-[project.optional-dependencies]
-dev = [
-    "mypy",
-    "pytest",
-    "pytest-sphinx",
-    "pytest-cov",
-    "twine",
-    "wheel",
-    "build",
-    "hatchling",
-    "Sphinx",
-    "sphinx-copybutton",
-    "sphinx-autobuild",
-    "sphinx-autodoc-typehints",
-]
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/chem"]
-
-[tool.pytest.ini_options]
-testpaths = "tests/"
-python_classes = [
-  "Test*",
-  "*Test"
-]
-log_level = "DEBUG"
