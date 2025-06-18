@@ -21,17 +21,30 @@ class Polarizability:
                 for second in CARTESIAN
             } for first in CARTESIAN
         }
-        return cls(data = pol)
+        return cls(data=pol)
+
+    def __sub__(self, other) -> Polarizability:
+        if not isinstance(other, Polarizability):
+            msg = f"Don't know how to add to {type(other)}."
+            raise ValueError(msg)
+
+        return Polarizability.from_builder(
+            builder=lambda first, second: (
+                self.data[first][second]
+                -
+                other.data[first][second]
+            ),
+        )
 
     def __add__(self, other) -> Polarizability:
         if not isinstance(other, Polarizability):
             msg = f"Don't know how to add to {type(other)}."
             raise ValueError(msg)
-        
+
         return Polarizability.from_builder(
             builder=lambda first, second: (
-                self.data[first][second] 
-                + 
+                self.data[first][second]
+                +
                 other.data[first][second]
             ),
         )
