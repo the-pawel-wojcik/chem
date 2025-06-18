@@ -128,8 +128,8 @@ class Alt_DIIS:
             )
         ).reshape(-1, 1)
 
-        save_for_later  = {
-            block: new_vector[block] 
+        save_for_later = {
+            block: new_vector[block]
             for block in (set(new_vector.keys()) - self.blocks_in_use)
         }
 
@@ -169,7 +169,7 @@ class Alt_DIIS:
         }
 
         dims = {
-            block: functools.reduce(lambda x, y: x * y, shapes[block],1)
+            block: functools.reduce(lambda x, y: x * y, shapes[block], 1)
             for block in blocks
         }
 
@@ -217,6 +217,7 @@ class DIIS:
     [1] P. Pulay, Convergence Acceleration of Iterative Sequences. The Case of
     SCF Iteration, Chemical Physics Letters 73, 393 (1980).
     """
+
     def __init__(self, noa: int, nva: int, nob: int, nvb: int) -> None:
         self.STORAGE_SIZE: int = 10
         self.START_DIIS_AT_ITER: int = 2
@@ -303,7 +304,7 @@ class DIIS:
                 new_vector['bbbb'].reshape(nvb * nvb * nob * nob),
                 # spin-changing terms
                 new_vector['abba'].reshape(nva * nvb * nob * noa),
-                new_vector['baab'].reshape(nvb * nva * noa * nob), 
+                new_vector['baab'].reshape(nvb * nva * noa * nob),
                 new_vector['baba'].reshape(nvb * nva * nob * noa),
             )
         ).reshape(-1, 1)
@@ -347,7 +348,7 @@ class DIIS:
         }
 
         dims = {
-            block: functools.reduce(lambda x, y: x * y, shapes[block],1)
+            block: functools.reduce(lambda x, y: x * y, shapes[block], 1)
             for block in blocks
         }
 
@@ -401,23 +402,23 @@ class UHF_CCSD:
         nvb = scf_data.nmo - nob
 
         self.data = UHF_CCSD_Data(
-            t1_aa = np.zeros(shape=(nva, noa)),
-            t1_bb = np.zeros(shape=(nvb, nob)),
-            t2_aaaa = np.zeros(shape=(nva, nva, noa, noa)),
-            t2_abab = np.zeros(shape=(nva, nvb, noa, nob)),
-            t2_bbbb = np.zeros(shape=(nvb, nvb, nob, nob)),
+            t1_aa=np.zeros(shape=(nva, noa)),
+            t1_bb=np.zeros(shape=(nvb, nob)),
+            t2_aaaa=np.zeros(shape=(nva, nva, noa, noa)),
+            t2_abab=np.zeros(shape=(nva, nvb, noa, nob)),
+            t2_bbbb=np.zeros(shape=(nvb, nvb, nob, nob)),
             # spin-changing terms that do not appear in the CC equations
             # but appear as residues
-            t2_abba = np.zeros(shape=(nva, nvb, nob, noa)),
-            t2_baab = np.zeros(shape=(nvb, nva, noa, nob)),
-            t2_baba = np.zeros(shape=(nvb, nva, nob, noa)),
+            t2_abba=np.zeros(shape=(nva, nvb, nob, noa)),
+            t2_baab=np.zeros(shape=(nvb, nva, noa, nob)),
+            t2_baba=np.zeros(shape=(nvb, nva, nob, noa)),
         )
 
         self.dampers = self.build_dampers(shift_1e=shift_1e, shift_2e=shift_2e)
 
         self.cc_solved = False
         self.lambda_cc_solved = False
-        
+
         if use_diis is True:
             self.diis = DIIS(noa, nva, nob, nvb)
             # self.diis = Alt_DIIS(noa, nva, nob, nvb)
@@ -427,11 +428,10 @@ class UHF_CCSD:
         # UI
         self.verbose = 0
 
-
     def solve_cc_equations(self):
         MAX_CCSD_ITER = 50
-        ENERGY_CONVERGENCE = 1e-6
-        RESIDUALS_CONVERGENCE = 1e-6
+        ENERGY_CONVERGENCE = 1e-10
+        RESIDUALS_CONVERGENCE = 1e-10
 
         for iter_idx in range(MAX_CCSD_ITER):
             old_energy = self.get_energy()
@@ -459,8 +459,8 @@ class UHF_CCSD:
         self.cc_solved = True
 
     def solve_lambda_equations(self):
-        MAX_CCSD_ITER = 25
-        RESIDUALS_CONVERGENCE = 1e-6
+        MAX_CCSD_ITER = 50
+        RESIDUALS_CONVERGENCE = 1e-10
         CC_ENERGY = self.get_energy()
         if self.cc_solved is False:
             self.solve_cc_equations()
@@ -665,23 +665,33 @@ class UHF_CCSD:
             uhf_scf_data=self.scf_data,
             uhf_ccsd_data=self.data,
         )
-        
+
         if self.data.lmbda is None:
             raise RuntimeError("UHF CCSD Lambda uninitialized.")
 
         # I don't know how to do this in pdaggerq better, the rhs just has the
         # energy times a coefficients that I subtract here
-        residuals['aa'] = ( get_lambda_singles_res_aa(**kwargs) 
-            - CC_ENERGY * self.data.lmbda.l1_aa )
-        residuals['bb'] = ( get_lambda_singles_res_bb(**kwargs)
-            - CC_ENERGY * self.data.lmbda.l1_bb )
+        residuals['aa'] = (
+            get_lambda_singles_res_aa(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l1_aa
+        )
+        residuals['bb'] = (
+            get_lambda_singles_res_bb(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l1_bb
+        )
 
-        residuals['aaaa'] = ( get_lambda_doubles_res_aaaa(**kwargs)
-            - CC_ENERGY * self.data.lmbda.l2_aaaa )
-        residuals['abab'] = ( get_lambda_doubles_res_abab(**kwargs)
-            - CC_ENERGY * self.data.lmbda.l2_abab )
-        residuals['bbbb'] = ( get_lambda_doubles_res_bbbb(**kwargs)
-            - CC_ENERGY * self.data.lmbda.l2_bbbb )
+        residuals['aaaa'] = (
+            get_lambda_doubles_res_aaaa(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l2_aaaa
+        )
+        residuals['abab'] = (
+            get_lambda_doubles_res_abab(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l2_abab
+        )
+        residuals['bbbb'] = (
+            get_lambda_doubles_res_bbbb(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l2_bbbb
+        )
 
         return residuals
 
@@ -693,28 +703,40 @@ class UHF_CCSD:
         lmbda = self.data.lmbda
         dampers = self.dampers
 
-        new_lambdas['aa'] = ( lmbda.l1_aa 
-             + residuals['aa'] * dampers['aa'].transpose((1, 0)) )
-        new_lambdas['bb'] = ( lmbda.l1_bb 
-             + residuals['bb'] * dampers['bb'].transpose((1, 0)) )
+        new_lambdas['aa'] = (
+            lmbda.l1_aa
+            +
+            residuals['aa'] * dampers['aa'].transpose((1, 0))
+        )
+        new_lambdas['bb'] = (
+            lmbda.l1_bb
+            +
+            residuals['bb'] * dampers['bb'].transpose((1, 0))
+        )
 
         its_oovv_now = (2, 3, 0, 1)
         new_lambdas['aaaa'] = (
-            lmbda.l2_aaaa 
-            + residuals['aaaa'] * dampers['aaaa'].transpose(its_oovv_now) )
+            lmbda.l2_aaaa
+            +
+            residuals['aaaa'] * dampers['aaaa'].transpose(its_oovv_now)
+        )
         new_lambdas['abab'] = (
             lmbda.l2_abab
-            + residuals['abab'] * dampers['abab'].transpose(its_oovv_now) )
+            +
+            residuals['abab'] * dampers['abab'].transpose(its_oovv_now)
+        )
         new_lambdas['bbbb'] = (
             lmbda.l2_bbbb
-            + residuals['bbbb'] * dampers['bbbb'].transpose(its_oovv_now) )
+            +
+            residuals['bbbb'] * dampers['bbbb'].transpose(its_oovv_now)
+        )
 
         return new_lambdas
 
     def update_lambdas(self, new_lambdas):
         if self.data.lmbda is None:
             raise RuntimeError("UHF CCSD Lambda uninitialized.")
-        
+
         lmbda = self.data.lmbda
         lmbda.l1_aa = new_lambdas['aa']
         lmbda.l1_bb = new_lambdas['bb']
