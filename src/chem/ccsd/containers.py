@@ -1,7 +1,10 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 import numpy as np
 from numpy.typing import NDArray
+
+from chem.hf.intermediates_builders import Intermediates
 
 
 @dataclass
@@ -58,3 +61,89 @@ class Spin_MBE():
             for key, value in self.doubles.items():
                 print(f' {key} shape = {value.shape}')
             print("")
+
+    @staticmethod
+    def find_dims_slices_shapes(uhf_scf_data: Intermediates) -> tuple:
+        """ TODO: make it work alright """
+        scf = uhf_scf_data
+        nmo = scf.nmo
+        noa = scf.noa
+        nva = nmo - noa
+        nob = scf.nob
+        nvb = nmo - nob
+        dims = {
+            E1_spin.aa: nva * noa,
+            E1_spin.bb: nvb * nob,
+            E2_spin.aaaa: nva * nva * noa * noa,
+            E2_spin.abab: nva * nvb * noa * nob,
+            E2_spin.abba: nva * nvb * nob * noa,
+            E2_spin.baab: nvb * nva * noa * nob,
+            E2_spin.baba: nvb * nva * nob * noa,
+            E2_spin.bbbb: nvb * nvb * nob * nob,
+        }
+
+        slices = dict()
+        current_size = 0
+        for block in E1_spin:
+            block_dim = dims[block]
+            slices[block] = slice(current_size, current_size + block_dim)
+            current_size += block_dim
+
+        for block in E2_spin:
+            block_dim = dims[block]
+            slices[block] = slice(current_size, current_size + block_dim)
+            current_size += block_dim
+
+        shapes = {
+            E1_spin.aa: (nva, noa),
+            E1_spin.aa: (nvb, nob),
+            E2_spin.aaaa: (nva, nva, noa, noa),
+            E2_spin.abab: (nva, nvb, noa, nob),
+            E2_spin.abba: (nva, nvb, nob, noa),
+            E2_spin.baab: (nvb, nva, noa, nob),
+            E2_spin.baba: (nvb, nva, nob, noa),
+            E2_spin.bbbb: (nvb, nvb, nob, nob),
+        }
+        return dims, slices, shapes
+
+
+    @classmethod
+    def from_flattened_NDArray(
+        cls,
+        vector: NDArray,
+        dims: dict[str, int],
+    ) -> Spin_MBE:
+
+        assert len(vector.shape) == 1
+        assert vector.shape[0] == cls.get_vector_dim(dims)
+
+        mbe = Spin_MBE()
+        dim_sum = 0
+        for block in E1_spin:
+            block_dim = dims[block]
+            mbe.singles[block] = vector[dim_sum: dim_sum + block_dim]
+            dim_sum += block_dim
+
+        for block in E2_spin:
+            block_dim = dims[block]
+            mbe.doubles[block] = vector[dim_sum: dim_sum + block_dim]
+            dim_sum += block_dim
+
+        return mbe
+
+
+    @staticmethod
+    def get_singles_dim(dims: dict[str, int]) -> int:
+        return sum(dims[block] for block in E1_spin)
+
+
+    @staticmethod
+    def get_doubles_dim(dims: dict[str, int]) -> int:
+        return sum(dims[block] for block in E2_spin)
+
+
+    @staticmethod
+    def get_vector_dim(dims: dict[str, int]) -> int:
+        singles_dim = Spin_MBE.get_singles_dim(dims)
+        doubles_dim = Spin_MBE.get_doubles_dim(dims)
+        return singles_dim + doubles_dim
