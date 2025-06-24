@@ -48,6 +48,7 @@ class Spin_MBE():
     """ MBE stands for many body expansion. """
     singles: dict[E1_spin, NDArray] = field(default_factory=dict)
     doubles: dict[E2_spin, NDArray] = field(default_factory=dict)
+    EQUAL_THRESHOLD: float = 1e-6
 
     def pretty_print_mbe(self) -> None:
         with np.printoptions(precision=3, suppress=True):
@@ -148,3 +149,37 @@ class Spin_MBE():
         singles_dim = Spin_MBE.get_singles_dim(dims)
         doubles_dim = Spin_MBE.get_doubles_dim(dims)
         return singles_dim + doubles_dim
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Spin_MBE):
+            return False
+
+        if self.singles.keys() != other.singles.keys():
+            return False
+        for key in self.singles.keys():
+            if not np.allclose(
+                self.singles[key],
+                other.singles[key],
+                atol=self.EQUAL_THRESHOLD,
+            ):
+                return False
+
+        if self.doubles.keys() != other.doubles.keys():
+            return False
+        for key in self.doubles.keys():
+            if not np.allclose(
+                self.doubles[key],
+                other.doubles[key],
+                atol=self.EQUAL_THRESHOLD,
+            ):
+                return False
+
+        return True
+
+    def __neg__(self):
+        negated = Spin_MBE()
+        for key, value in self.singles.items():
+            negated.singles[key] = -value
+        for key, value in self.doubles.items():
+            negated.doubles[key] = -value
+        return negated
