@@ -96,7 +96,7 @@ class Spin_MBE():
 
         shapes = {
             E1_spin.aa: (nva, noa),
-            E1_spin.aa: (nvb, nob),
+            E1_spin.bb: (nvb, nob),
             E2_spin.aaaa: (nva, nva, noa, noa),
             E2_spin.abab: (nva, nvb, noa, nob),
             E2_spin.abba: (nva, nvb, nob, noa),
