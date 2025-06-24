@@ -111,36 +111,30 @@ class Spin_MBE():
     def from_flattened_NDArray(
         cls,
         vector: NDArray,
-        dims: dict[str, int],
+        uhf_scf_data: Intermediates,
     ) -> Spin_MBE:
-
+        dims, slices, shapes = Spin_MBE.find_dims_slices_shapes(uhf_scf_data)
         assert len(vector.shape) == 1
-        assert vector.shape[0] == cls.get_vector_dim(dims)
+        assert vector.shape[0] == Spin_MBE.get_vector_dim(dims)
 
         mbe = Spin_MBE()
-        dim_sum = 0
-        for block in E1_spin:
-            block_dim = dims[block]
-            mbe.singles[block] = vector[dim_sum: dim_sum + block_dim]
-            dim_sum += block_dim
+        for spin_block in E1_spin:
+            sub_vec = vector[slices[spin_block]]
+            mbe.singles[spin_block] = sub_vec.reshape(shapes[spin_block])
 
-        for block in E2_spin:
-            block_dim = dims[block]
-            mbe.doubles[block] = vector[dim_sum: dim_sum + block_dim]
-            dim_sum += block_dim
+        for spin_block in E2_spin:
+            sub_vec = vector[slices[spin_block]]
+            mbe.doubles[spin_block] = sub_vec.reshape(shapes[spin_block])
 
         return mbe
-
 
     @staticmethod
     def get_singles_dim(dims: dict[str, int]) -> int:
         return sum(dims[block] for block in E1_spin)
 
-
     @staticmethod
     def get_doubles_dim(dims: dict[str, int]) -> int:
         return sum(dims[block] for block in E2_spin)
-
 
     @staticmethod
     def get_vector_dim(dims: dict[str, int]) -> int:

@@ -1,9 +1,11 @@
 from chem.ccsd.containers import E1_spin, E2_spin, Spin_MBE
 from chem.hf.electronic_structure import hf
-from chem.hf.intermediates_builders import extract_intermediates
+from chem.hf.intermediates_builders import Intermediates, extract_intermediates
+import pytest
 
 
-def test_spin_MBE():
+@pytest.fixture(scope='session')
+def intermediates() -> Intermediates:
     """ Geometry from CCCBDB: HF/STO-3G """
     geometry = """
     0 1
@@ -13,9 +15,12 @@ def test_spin_MBE():
     symmetry c1
     """
     hf_result = hf(geometry=geometry, basis='sto-3g')
-    intermediates = extract_intermediates(hf_result.wfn)
-    response = Spin_MBE()
-    dims, slices, shapes = response.find_dims_slices_shapes(
+    return extract_intermediates(hf_result.wfn)
+
+
+def test_dims_shapes_slices(intermediates: Intermediates):
+    vector = Spin_MBE()
+    dims, slices, shapes = vector.find_dims_slices_shapes(
         uhf_scf_data=intermediates,
     )
     for e1 in E1_spin:
@@ -34,3 +39,13 @@ def test_spin_MBE():
     assert slices[E2_spin.baab] == slice(320, 420, None)
     assert slices[E2_spin.baba] == slice(420, 520, None)
     assert slices[E2_spin.bbbb] == slice(520, 620, None)
+
+
+def test_get_dims(intermediates: Intermediates):
+    vector = Spin_MBE()
+    dims, _, _ = vector.find_dims_slices_shapes(
+        uhf_scf_data=intermediates,
+    )
+    assert vector.get_singles_dim(dims) == 20
+    assert vector.get_doubles_dim(dims) == 600
+    assert vector.get_vector_dim(dims) == 620
