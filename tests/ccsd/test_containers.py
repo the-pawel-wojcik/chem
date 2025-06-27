@@ -71,3 +71,26 @@ def test_go_around(intermediates: Intermediates):
 
         assert test_vector.shape == all_around.shape
         assert np.allclose(test_vector, all_around)
+
+
+def test_block_match(intermediates: Intermediates):
+    """ Test that blocks land in the right spots when MBE-ed. """
+    dims, slices, shapes = Spin_MBE.find_dims_slices_shapes(
+        uhf_scf_data=intermediates,
+    )
+
+    full_mbe_dim = sum(block_dim for block_dim in dims.values())
+
+    TODAY = 20250627
+    rng = np.random.default_rng(seed=TODAY)
+    for _ in range(1):
+        test_vector = rng.random(size=full_mbe_dim)
+        test_vector_mbe = Spin_MBE.from_flattened_NDArray(
+                test_vector, intermediates)
+        for block in E1_spin:
+            manual_subblock = test_vector[slices[block]].reshape(shapes[block])
+            assert np.allclose(manual_subblock, test_vector_mbe.singles[block])
+
+        for block in E2_spin:
+            manual_subblock = test_vector[slices[block]].reshape(shapes[block])
+            assert np.allclose(manual_subblock, test_vector_mbe.doubles[block])
