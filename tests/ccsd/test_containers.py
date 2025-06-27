@@ -2,6 +2,7 @@ from chem.ccsd.containers import E1_spin, E2_spin, Spin_MBE
 from chem.hf.electronic_structure import hf
 from chem.hf.intermediates_builders import Intermediates, extract_intermediates
 import pytest
+import numpy as np
 
 
 @pytest.fixture(scope='session')
@@ -49,3 +50,24 @@ def test_get_dims(intermediates: Intermediates):
     assert vector.get_singles_dim(dims) == 20
     assert vector.get_doubles_dim(dims) == 600
     assert vector.get_vector_dim(dims) == 620
+
+
+def test_go_around(intermediates: Intermediates):
+    """ Test that the conversion from an NDArray to MBE and back is an identity
+    transformation. """
+    dims, _, _ = Spin_MBE.find_dims_slices_shapes(
+        uhf_scf_data=intermediates,
+    )
+
+    full_mbe_dim = sum(block_dim for block_dim in dims.values())
+
+    TODAY = 20250627
+    rng = np.random.default_rng(seed=TODAY)
+    for _ in range(10):
+        test_vector = rng.random(size=full_mbe_dim)
+        test_vector_mbe = Spin_MBE.from_flattened_NDArray(
+                test_vector, intermediates)
+        all_around = test_vector_mbe.flatten()
+
+        assert test_vector.shape == all_around.shape
+        assert np.allclose(test_vector, all_around)

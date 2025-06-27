@@ -134,7 +134,7 @@ class Spin_MBE():
             list(vec.reshape(-1, 1) for _, vec in self.singles.items())
             +
             list(vec.reshape(-1, 1) for _, vec in self.doubles.items())
-        )
+        ).flatten()
 
     @staticmethod
     def get_singles_dim(dims: dict[str, int]) -> int:
