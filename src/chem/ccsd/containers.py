@@ -1,10 +1,15 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
+from typing import TypeVar, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
 from chem.hf.intermediates_builders import Intermediates
+
+_T_contra = TypeVar("_T_contra", contravariant=True)
+class SupportsWrite(Protocol[_T_contra]):
+    def write(self, s: _T_contra, /) -> object: ...
 
 
 @dataclass
@@ -69,17 +74,21 @@ class Spin_MBE():
                       f' norm = {float(np.linalg.norm(value)):.3f}')
             print("")
 
-    def pretty_print_doubles_block(self, block: E2_spin) -> None:
+    def pretty_print_doubles_block(
+        self,
+        block: E2_spin,
+        file: SupportsWrite | None = None,
+    ) -> None:
         if not block in self.doubles:
             raise ValueError(f"Block {block} is not part of this vector.")
 
         matrix = self.doubles[block]
         print(f' {block}'
               f' shape = {matrix.shape}'
-              f' norm = {float(np.linalg.norm(matrix)):.3f}')
+              f' norm = {float(np.linalg.norm(matrix)):.3f}', file=file)
 
         with np.printoptions(precision=3, suppress=True):
-            print(matrix)
+            print(matrix, file=file)
 
     @staticmethod
     def find_dims_slices_shapes(uhf_scf_data: Intermediates) -> tuple:
