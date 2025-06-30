@@ -69,6 +69,18 @@ class Spin_MBE():
                       f' norm = {float(np.linalg.norm(value)):.3f}')
             print("")
 
+    def pretty_print_doubles_block(self, block: E2_spin) -> None:
+        if not block in self.doubles:
+            raise ValueError(f"Block {block} is not part of this vector.")
+
+        matrix = self.doubles[block]
+        print(f' {block}'
+              f' shape = {matrix.shape}'
+              f' norm = {float(np.linalg.norm(matrix)):.3f}')
+
+        with np.printoptions(precision=3, suppress=True):
+            print(matrix)
+
     @staticmethod
     def find_dims_slices_shapes(uhf_scf_data: Intermediates) -> tuple:
         """ TODO: make it work alright """
