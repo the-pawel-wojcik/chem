@@ -45,7 +45,9 @@ class E2_spin(StrEnum):
 
 @dataclass
 class Spin_MBE():
-    """ MBE stands for many body expansion. """
+    """ MBE stands for many body expansion. 
+    TODO: find a better place for it. Uncouple it from the Intermediates.
+    """
     singles: dict[E1_spin, NDArray] = field(default_factory=dict)
     doubles: dict[E2_spin, NDArray] = field(default_factory=dict)
     EQUAL_THRESHOLD: float = 1e-6
@@ -55,12 +57,16 @@ class Spin_MBE():
 
             print("Singles:")
             for key, value in self.singles.items():
-                print(f' {key} shape = {value.shape}')
+                print(f' {key}'
+                      f' shape = {value.shape}'
+                      f' norm = {float(np.linalg.norm(value)):.3f}')
                 print(value)
 
             print("Doubles:")
             for key, value in self.doubles.items():
-                print(f' {key} shape = {value.shape}')
+                print(f' {key}'
+                      f' shape = {value.shape}'
+                      f' norm = {float(np.linalg.norm(value)):.3f}')
             print("")
 
     @staticmethod
