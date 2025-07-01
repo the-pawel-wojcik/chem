@@ -41,3 +41,16 @@ def test_ccsd_energy(
     uhf_ccsd_total_energy = uhf_ccsd_energy + nuclear_repulsion_energy
     assert np.isclose(uhf_ccsd_energy, -83.9266502349831, atol=1e-5)
     assert np.isclose(uhf_ccsd_total_energy, -75.02028564818042, atol=1e-5)
+
+
+def test_ccsd_diis_energy(
+    intermediates: Intermediates,
+    nuclear_repulsion_energy: float
+):
+    ccsd = UHF_CCSD(intermediates)
+    ccsd.verbose = 1
+    ccsd.solve_cc_equations()
+    uhf_ccsd_energy = ccsd.get_energy()
+    uhf_ccsd_total_energy = uhf_ccsd_energy + nuclear_repulsion_energy
+    assert np.isclose(uhf_ccsd_energy, -83.9266502349831, atol=1e-5)
+    assert np.isclose(uhf_ccsd_total_energy, -75.02028564818042, atol=1e-5)
