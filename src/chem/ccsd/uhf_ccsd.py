@@ -386,14 +386,23 @@ class DIIS:
         return matrix, rhs
 
 
+@dataclass
+class UHF_CCSD_Config:
+    verbose: int = 0
+    use_diis: bool = True
+    max_iterations: int = 100
+    energy_convergence: float = 1e-10
+    residuals_convergence: float = 1e-10
+    shift_1e: float = 0.0
+    shift_2e: float = 0.0
+
+
 class UHF_CCSD:
 
     def __init__(
         self,
         scf_data: Intermediates,
-        shift_1e: float = 0.0,
-        shift_2e: float = 0.0,
-        use_diis: bool = True,
+        config: UHF_CCSD_Config | None = None,
     ) -> None:
         self.scf_data = scf_data
         noa = scf_data.noa
@@ -414,24 +423,28 @@ class UHF_CCSD:
             t2_baba=np.zeros(shape=(nvb, nva, nob, noa)),
         )
 
-        self.dampers = self.build_dampers(shift_1e=shift_1e, shift_2e=shift_2e)
+        if config is None:
+            self.CONFIG = UHF_CCSD_Config()
+        else:
+            self.CONFIG = config
+        self.dampers = self.build_dampers(
+            shift_1e=self.CONFIG.shift_1e,
+            shift_2e=self.CONFIG.shift_2e,
+        )
 
         self.cc_solved = False
         self.lambda_cc_solved = False
 
-        if use_diis is True:
+        if self.CONFIG.use_diis is True:
             self.diis = DIIS(noa, nva, nob, nvb)
             # self.diis = Alt_DIIS(noa, nva, nob, nvb)
         else:
             self.diis = None
 
-        # UI
-        self.verbose = 0
-
     def solve_cc_equations(self):
-        MAX_CCSD_ITER = 50
-        ENERGY_CONVERGENCE = 1e-10
-        RESIDUALS_CONVERGENCE = 1e-10
+        MAX_CCSD_ITER = self.CONFIG.max_iterations
+        ENERGY_CONVERGENCE = self.CONFIG.energy_convergence
+        RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
 
         for iter_idx in range(MAX_CCSD_ITER):
             old_energy = self.get_energy()
@@ -459,8 +472,8 @@ class UHF_CCSD:
         self.cc_solved = True
 
     def solve_lambda_equations(self):
-        MAX_CCSD_ITER = 50
-        RESIDUALS_CONVERGENCE = 1e-10
+        MAX_CCSD_ITER = self.CONFIG.max_iterations
+        RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
         CC_ENERGY = self.get_energy()
         if self.cc_solved is False:
             self.solve_cc_equations()
@@ -507,7 +520,7 @@ class UHF_CCSD:
     def print_iteration_report(
         self, iter_idx, current_energy, energy_change, residuals_norm,
     ):
-        if self.verbose == 0:
+        if self.CONFIG.verbose == 0:
             return
 
         e_fmt = '12.6f'
@@ -747,7 +760,7 @@ class UHF_CCSD:
     def print_lambda_iteration_report(
             self, iter_idx: int, residuals_norm: float,
     ):
-        if self.verbose == 0:
+        if self.CONFIG.verbose == 0:
             return
 
         e_fmt = '12.6f'

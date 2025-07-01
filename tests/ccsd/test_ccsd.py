@@ -1,4 +1,4 @@
-from chem.ccsd.uhf_ccsd import UHF_CCSD
+from chem.ccsd.uhf_ccsd import UHF_CCSD, UHF_CCSD_Config
 from chem.hf.electronic_structure import hf, ResultHF
 from chem.hf.intermediates_builders import Intermediates, extract_intermediates
 import pytest
@@ -30,12 +30,19 @@ def intermediates(hf_result) -> Intermediates:
     return extract_intermediates(hf_result.wfn)
 
 
+@pytest.mark.parametrize(
+    argnames='uhf_ccsd_config',
+    argvalues= [
+        pytest.param(UHF_CCSD_Config(verbose=1, use_diis=False), id='no_diis'),
+        pytest.param(UHF_CCSD_Config(verbose=1), id='default'),
+    ]
+)
 def test_ccsd_energy(
     intermediates: Intermediates,
-    nuclear_repulsion_energy: float
+    nuclear_repulsion_energy: float,
+    uhf_ccsd_config: UHF_CCSD_Config,
 ):
-    ccsd = UHF_CCSD(intermediates, use_diis=False)
-    ccsd.verbose = 1
+    ccsd = UHF_CCSD(intermediates, uhf_ccsd_config)
     ccsd.solve_cc_equations()
     uhf_ccsd_energy = ccsd.get_energy()
     uhf_ccsd_total_energy = uhf_ccsd_energy + nuclear_repulsion_energy
@@ -47,8 +54,7 @@ def test_ccsd_diis_energy(
     intermediates: Intermediates,
     nuclear_repulsion_energy: float
 ):
-    ccsd = UHF_CCSD(intermediates)
-    ccsd.verbose = 1
+    ccsd = UHF_CCSD(intermediates, UHF_CCSD_Config(verbose=1))
     ccsd.solve_cc_equations()
     uhf_ccsd_energy = ccsd.get_energy()
     uhf_ccsd_total_energy = uhf_ccsd_energy + nuclear_repulsion_energy
@@ -58,5 +64,4 @@ def test_ccsd_diis_energy(
 
 def test_ccsd_lambda(intermediates: Intermediates):
     ccsd = UHF_CCSD(intermediates)
-    ccsd.verbose = 0
     ccsd.solve_lambda_equations()  # solves the CC equations first if unsolved
