@@ -54,3 +54,9 @@ def test_ccsd_diis_energy(
     uhf_ccsd_total_energy = uhf_ccsd_energy + nuclear_repulsion_energy
     assert np.isclose(uhf_ccsd_energy, -83.9266502349831, atol=1e-5)
     assert np.isclose(uhf_ccsd_total_energy, -75.02028564818042, atol=1e-5)
+
+
+def test_ccsd_lambda(intermediates: Intermediates):
+    ccsd = UHF_CCSD(intermediates)
+    ccsd.verbose = 0
+    ccsd.solve_lambda_equations()  # solves the CC equations first if unsolved
