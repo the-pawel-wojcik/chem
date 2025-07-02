@@ -51,7 +51,8 @@ class E2_spin(StrEnum):
 @dataclass
 class Spin_MBE():
     """ MBE stands for many body expansion. 
-    TODO: find a better place for it. Uncouple it from the Intermediates.
+    TODO: find a better place for it.
+    TODO: Uncouple it from the Intermediates.
     """
     singles: dict[E1_spin, NDArray] = field(default_factory=dict)
     doubles: dict[E2_spin, NDArray] = field(default_factory=dict)
@@ -210,3 +211,27 @@ class Spin_MBE():
         for key, value in self.doubles.items():
             negated.doubles[key] = -value
         return negated
+    
+    def __matmul__(self, other):
+        if not isinstance(other, Spin_MBE):
+            raise ValueError(f"Unsupported operation {self.__class__.__name__}"
+                             f" @ {other.__class__.__name__}.")
+
+        return sum(
+            [
+                np.einsum(
+                    'ai,ai->',
+                    self.singles[spin_block],
+                    other.singles[spin_block],
+                ) for spin_block in E1_spin
+            ]
+            + 
+            [
+                np.einsum(
+                    'abji,abji->',
+                    self.doubles[spin_block],
+                    other.doubles[spin_block],
+                ) for spin_block in E2_spin
+            ]
+       )
+
