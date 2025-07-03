@@ -115,6 +115,25 @@ class Spin_MBE():
     doubles: dict[E2_spin, NDArray] = field(default_factory=dict)
     EQUAL_THRESHOLD: float = 1e-6
 
+    @classmethod
+    def from_NDArray(cls, vector: NDArray, uhf_ov_data: UHF_ov_data):
+        assert len(vector.shape) == 1
+        assert vector.shape[0] == uhf_ov_data.get_vector_dim()
+
+        slices = uhf_ov_data.get_slices()
+        shapes = uhf_ov_data.get_shapes()
+        singles = dict()
+        for spin_block in E1_spin:
+            sub_vec = vector[slices[spin_block]]
+            singles[spin_block] = sub_vec.reshape(shapes[spin_block])
+
+        doubles = dict()
+        for spin_block in E2_spin:
+            sub_vec = vector[slices[spin_block]]
+            doubles[spin_block] = sub_vec.reshape(shapes[spin_block])
+
+        return cls(singles=singles, doubles=doubles)
+
     def pretty_print_mbe(self) -> None:
         with np.printoptions(precision=3, suppress=True):
 
