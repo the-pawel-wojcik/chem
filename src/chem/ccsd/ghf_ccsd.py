@@ -6,6 +6,8 @@ from chem.ccsd.containers import GHF_CCSD_Data, GHF_CCSD_Lambda_Data
 from chem.ccsd.equations.ghf.cc_residuals.doubles import get_doubles_residual
 from chem.ccsd.equations.ghf.cc_residuals.singles import get_singles_residual
 from chem.ccsd.equations.ghf.energy.energy import get_ghf_ccsd_energy
+from chem.ccsd.equations.ghf.lmbd.singles import get_lambda_singles_residual
+from chem.ccsd.equations.ghf.lmbd.doubles import get_lambda_doubles_residual
 from chem.ccsd.equations.ghf.util import GHF_Generators_Input
 from chem.hf.ghf_data import GHF_Data
 import numpy as np
@@ -122,6 +124,28 @@ class GHF_CCSD:
             raise RuntimeError("CCSD didn't converge")
         self.cc_solved = True
 
+    def solve_lambda_equations(self):
+        MAX_CCSD_ITER = self.CONFIG.max_iterations
+        RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
+        CC_ENERGY = self.get_energy()
+        if self.cc_solved is False:
+            self.solve_cc_equations()
+
+        self.initialize_lambda()
+
+        for iter_idx in range(MAX_CCSD_ITER):
+            residuals = self.calculate_lambda_residuals(CC_ENERGY)
+            new_lambdas = self.calculate_new_lambdas(residuals)
+            self.update_lambdas(new_lambdas)
+            residuals_norm = float(self.get_residuals_norm(residuals))
+            self.print_lambda_iteration_report(iter_idx, residuals_norm)
+            residuals_converged = residuals_norm < RESIDUALS_CONVERGENCE
+            if residuals_converged:
+                break
+        else:
+            raise RuntimeError("Lambda-GHF_CCSD didn't converge.")
+        self.lambda_cc_solved = True
+
     def get_energy(self) -> float:
         ghf_ccsd_energy = get_ghf_ccsd_energy(
             ghf_data=self.ghf_data,
@@ -186,4 +210,87 @@ class GHF_CCSD:
         if self.diis is not None:
             if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
                 print(' DIIS', end='')
+        print('')
+
+    def initialize_lambda(self):
+        if self.data.lmbda is not None:
+            msg = "Re-initializing GHF CCSD Lambda."
+            raise RuntimeError(msg)
+
+        self.data.lmbda = GHF_CCSD_Lambda_Data(
+            l1=self.data.t1.copy().transpose((1, 0)),
+            l2=self.data.t2.copy().transpose((2, 3, 0, 1)),
+        )
+
+    def calculate_lambda_residuals(self, CC_ENERGY: float):
+        residuals = dict()
+
+        kwargs = GHF_Generators_Input(
+            ghf_data=self.ghf_data,
+            ghf_ccsd_data=self.data,
+        )
+
+        if self.data.lmbda is None:
+            raise RuntimeError("GHF CCSD Lambda uninitialized.")
+
+        # I don't know how to do this in pdaggerq better, the rhs just has the
+        # energy times a coefficients that I subtract here
+        residuals['singles'] = (
+            get_lambda_singles_residual(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l1
+        )
+        residuals['doubles'] = (
+            get_lambda_doubles_residual(**kwargs)
+            - CC_ENERGY * self.data.lmbda.l2
+        )
+
+        return residuals
+
+    def calculate_new_lambdas(
+        self,
+        residuals: dict[str, NDArray],
+    ) -> dict[str, NDArray]:
+        new_lambdas = dict()
+        if self.data.lmbda is None:
+            raise RuntimeError("GHF CCSD Lambda uninitialized.")
+
+        lmbda = self.data.lmbda
+        dampers = self.dampers
+
+        new_lambdas['singles'] = (
+            lmbda.l1
+            +
+            residuals['singles'] * dampers['singles'].transpose((1, 0))
+        )
+
+        its_oovv_now = (2, 3, 0, 1)
+        new_lambdas['doubles'] = (
+            lmbda.l2
+            +
+            residuals['doubles'] * dampers['doubles'].transpose(its_oovv_now)
+        )
+
+        return new_lambdas
+
+    def update_lambdas(self, new_lambdas: dict[str, NDArray]) -> None:
+        if self.data.lmbda is None:
+            raise RuntimeError("GHF CCSD Lambda uninitialized.")
+
+        lmbda = self.data.lmbda
+        lmbda.l1 = new_lambdas['singles']
+        lmbda.l2 = new_lambdas['doubles']
+
+    def print_lambda_iteration_report(
+            self, iter_idx: int, residuals_norm: float,
+    ):
+        if self.CONFIG.verbose == 0:
+            return
+
+        e_fmt = '12.6f'
+        print(f"Iteration {iter_idx + 1:>2d}:", end='')
+        print(f' {residuals_norm:{e_fmt}}', end='')
+        # TODO:
+        # if self.diis is not None:
+        #     if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
+        #         print(' DIIS', end='')
         print('')
