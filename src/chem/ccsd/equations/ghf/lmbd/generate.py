@@ -66,7 +66,7 @@ def print_doubles_in_numpy(pq):
         quantity=tensor_name,
     )
 
-    output_variables = ('i', 'j', 'b', 'a')
+    output_variables = ('i', 'j', 'a', 'b')
     for my_term in tensor_terms:
         einsum_terms = my_term.einsum_string(
             output_variables=output_variables,
