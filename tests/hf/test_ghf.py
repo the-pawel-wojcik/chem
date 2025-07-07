@@ -1,6 +1,8 @@
 import pytest
+
 from chem.hf.ghf_data import wfn_to_GHF_Data, GHF_Data
 from chem.hf.electronic_structure import hf, ResultHF
+from chem.meta.coordinates import Descartes
 from numpy import einsum
 import numpy as np
 
@@ -46,3 +48,10 @@ def test_energies(hf_result: ResultHF):
     nre = hf_result.molecule.nuclear_repulsion_energy()
     # assert np.isclose(nre, 8.906479, atol=1e-5)  # value from CCCBDB
     assert np.isclose(energy + nre, -74.965901, atol=1e-5)  # value from CCCBDB
+
+
+def test_dipoles_shapes(hf_result: ResultHF):
+    ghf_data = wfn_to_GHF_Data(hf_result.wfn)
+    for direction in Descartes:
+        mu_component =  ghf_data.mu[direction]
+        assert mu_component.shape == (14, 14)

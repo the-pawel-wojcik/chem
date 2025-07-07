@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+
+from chem.meta.coordinates import Descartes
 import numpy as np
 from numpy.typing import NDArray
 from psi4.core import Wavefunction, Matrix, MintsHelper
@@ -6,9 +8,7 @@ from psi4.core import Wavefunction, Matrix, MintsHelper
 
 @dataclass
 class GHF_Data:
-    mu_x: NDArray
-    mu_y: NDArray
-    mu_z: NDArray
+    mu: dict[Descartes, NDArray]
     identity_singles: NDArray
     nmo: int
     no: int
@@ -115,27 +115,31 @@ def wfn_to_GHF_Data(wfn: Wavefunction) -> GHF_Data:
     # dipole integrals
     mu = mints.ao_dipole()
 
-    mu_x = np.asarray(mu[0])
-    mu_y = np.asarray(mu[1])
-    mu_z = np.asarray(mu[2])
+    mu_AO = dict()
+    mu_AO[Descartes.x] = np.asarray(mu[0])
+    mu_AO[Descartes.y] = np.asarray(mu[1])
+    mu_AO[Descartes.z] = np.asarray(mu[2])
 
     # transform the dipole integrals to the MO basis
     mos_up = np.asarray(mos_up)
 
-    mua_x = mos_up.T @ mu_x @ mos_up
-    mua_y = mos_up.T @ mu_y @ mos_up
-    mua_z = mos_up.T @ mu_z @ mos_up
+    mu_MO = {
+        coordinate:
+        mos_up.T @ component @ mos_up 
+        for coordinate, component in mu_AO.items()
+    }
 
-    mu_x = np.block([
-        [mua_x, mua_x * 0.0],
-        [mua_x * 0.0, mua_x],
-    ])
-
+    mu_ghf = {
+        coordinate:
+        np.block([
+            [component, component * 0.0],
+            [component * 0.0, component],
+        ])
+        for coordinate, component in mu_MO.items()
+    }
 
     return GHF_Data(
-        mu_x=mua_x,
-        mu_y=mua_y,
-        mu_z=mua_z,
+        mu=mu_ghf,
         identity_singles=identity_singles,
         f=fock,
         o=occ,
