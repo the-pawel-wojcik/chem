@@ -60,8 +60,8 @@ def test_ccsd_energy(
 #     ghf_ccsd_total_energy = ghf_ccsd_energy + nuclear_repulsion_energy
 #     assert np.isclose(ghf_ccsd_energy, -83.9266502349831, atol=1e-5)
 #     assert np.isclose(ghf_ccsd_total_energy, -75.02028564818042, atol=1e-5)
-#
-#
-# def test_ccsd_lambda(ghf_data: GHF_Data):
-#     ccsd = GHF_CCSD(ghf_data)
-#     ccsd.solve_lambda_equations()  # solves the CC equations first if unsolved
+
+
+def test_lambda_solver(ghf_data: GHF_Data):
+    ccsd = GHF_CCSD(ghf_data, config=GHF_CCSD_Config(verbose=True))
+    ccsd.solve_lambda_equations()
