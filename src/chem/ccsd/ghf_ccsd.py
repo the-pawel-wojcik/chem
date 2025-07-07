@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 
+from numpy.typing import NDArray
+
 from chem.ccsd.containers import GHF_CCSD_Data, GHF_CCSD_Lambda_Data
+from chem.ccsd.equations.ghf.cc_residuals.doubles import get_doubles_residual
+from chem.ccsd.equations.ghf.cc_residuals.singles import get_singles_residual
+from chem.ccsd.equations.ghf.energy.energy import get_ghf_ccsd_energy
+from chem.ccsd.equations.ghf.util import GHF_Generators_Input
 from chem.hf.ghf_data import GHF_Data
 import numpy as np
 
@@ -85,3 +91,99 @@ class GHF_CCSD:
         }
 
         return dampers
+
+    def solve_cc_equations(self):
+        MAX_CCSD_ITER = self.CONFIG.max_iterations
+        ENERGY_CONVERGENCE = self.CONFIG.energy_convergence
+        RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
+
+        for iter_idx in range(MAX_CCSD_ITER):
+            old_energy = self.get_energy()
+
+            residuals = self.calculate_residuals()
+            new_t_amps = self.calculate_new_amplitudes(residuals)
+            if self.diis is not None:
+                new_t_amps = self.diis.find_next_guess(new_t_amps, residuals)
+            self.update_t_amps(new_t_amps)
+
+            new_energy = self.get_energy()
+            energy_change = new_energy - old_energy
+            residuals_norm = self.get_residuals_norm(residuals)
+            self.print_iteration_report(
+                iter_idx, new_energy, energy_change, residuals_norm,
+            )
+
+            energy_converged = np.abs(energy_change) < ENERGY_CONVERGENCE
+            residuals_converged = residuals_norm < RESIDUALS_CONVERGENCE
+
+            if energy_converged and residuals_converged:
+                break
+        else:
+            raise RuntimeError("CCSD didn't converge")
+        self.cc_solved = True
+
+    def get_energy(self) -> float:
+        ghf_ccsd_energy = get_ghf_ccsd_energy(
+            ghf_data=self.ghf_data,
+            ghf_ccsd_data=self.data,
+        )
+        return float(ghf_ccsd_energy)
+
+    def calculate_residuals(self):
+        residuals = dict()
+
+        kwargs = GHF_Generators_Input(
+            ghf_data=self.ghf_data,
+            ghf_ccsd_data=self.data,
+        )
+
+        residuals['singles'] = get_singles_residual(**kwargs)
+        residuals['doubles'] = get_doubles_residual(**kwargs)
+
+        return residuals
+
+    def calculate_new_amplitudes(
+        self,
+        residuals: dict[str, NDArray]
+    ) -> dict[str, NDArray]:
+        new_t_amps = dict()
+        new_t_amps['singles'] = (
+            self.data.t1
+            +
+            residuals['singles'] * self.dampers['singles']
+        )
+        new_t_amps['doubles'] = (
+            self.data.t2
+            +
+            residuals['doubles'] * self.dampers['doubles']
+        )
+
+        return new_t_amps
+
+    def update_t_amps(self, new_t_amps: dict[str, NDArray]) -> None:
+        self.data.t1 = new_t_amps['singles']
+        self.data.t2 = new_t_amps['doubles']
+
+    def get_residuals_norm(self, residuals: dict[str, NDArray]) -> float:
+        norm = sum(np.linalg.norm(residual) for residual in residuals.values())
+        return float(norm)
+
+    def print_iteration_report(
+        self,
+        iter_idx: int,
+        current_energy: float,
+        energy_change: float,
+        residuals_norm: float,
+    ):
+        if self.CONFIG.verbose == 0:
+            return
+
+        e_fmt = '12.6f'
+        print(f"Iteration {iter_idx + 1:>2d}:", end='')
+        print(f' {current_energy:{e_fmt}}', end='')
+        print(f' {energy_change:{e_fmt}}', end='')
+        print(f' {residuals_norm:{e_fmt}}', end='')
+        if self.diis is not None:
+            if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
+                print(' DIIS', end='')
+        print('')
