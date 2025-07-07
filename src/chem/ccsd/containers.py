@@ -23,3 +23,17 @@ class UHF_CCSD_Data:
     t2_baba: NDArray
 
     lmbda: UHF_CCSD_Lambda_Data | None = None
+
+
+@dataclass
+class GHF_CCSD_Lambda_Data:
+    l1: NDArray
+    l2: NDArray
+
+
+@dataclass
+class GHF_CCSD_Data:
+    t1: NDArray
+    t2: NDArray
+
+    lmbda: GHF_CCSD_Lambda_Data | None = None
