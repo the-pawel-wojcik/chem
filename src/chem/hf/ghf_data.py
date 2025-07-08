@@ -138,6 +138,14 @@ def wfn_to_GHF_Data(wfn: Wavefunction) -> GHF_Data:
         for coordinate, component in mu_MO.items()
     }
 
+    # reorder
+    mu_ghf = {
+        coordinate: np.asarray([
+            row[order] for row in component[order]
+        ])
+        for coordinate, component in mu_ghf.items()
+    }
+
     return GHF_Data(
         mu=mu_ghf,
         identity_singles=identity_singles,

@@ -55,3 +55,5 @@ def test_dipoles_shapes(hf_result: ResultHF):
     for direction in Descartes:
         mu_component =  ghf_data.mu[direction]
         assert mu_component.shape == (14, 14)
+
+# TODO: test dipole values too
