@@ -1,5 +1,7 @@
 from numpy.typing import NDArray
+from chem.hf.ghf_data import GHF_Data
 from chem.hf.intermediates_builders import Intermediates
+from chem.meta.ghf_ccsd_mbe import GHF_ov_data
 from chem.meta.spin_mbe import E1_spin, E2_spin, Spin_MBE, UHF_ov_data
 
 
@@ -39,3 +41,10 @@ def turn_NDArray_to_Spin_MBE_using_uhf_data(
 ) -> Spin_MBE:
     uhf_ov_data = turn_UHF_Data_to_UHF_ov_data(uhf_data)
     return turn_NDArray_to_Spin_MBE(vector, uhf_ov_data)
+
+
+def turn_GHF_Data_to_GHF_ov_data(ghf_data: GHF_Data) -> GHF_ov_data:
+    nmo = ghf_data.nmo
+    no = ghf_data.no
+    nv = ghf_data.nv
+    return GHF_ov_data(nmo=nmo, no=no, nv=nv)
