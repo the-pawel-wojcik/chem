@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from chem.meta.coordinates import Descartes
+from chem.meta.ghf_ccsd_mbe import GHF_ov_data
 import numpy as np
 from numpy.typing import NDArray
 from psi4.core import Wavefunction, Matrix, MintsHelper
@@ -17,6 +18,14 @@ class GHF_Data:
     o: slice
     f: NDArray
     g: NDArray
+
+
+def ghf_data_to_GHF_ov_data(ghf_data: GHF_Data) -> GHF_ov_data:
+    return GHF_ov_data(
+        nmo=ghf_data.nmo,
+        no=ghf_data.no,
+        nv=ghf_data.nv,
+    )
 
 
 def _tei_to_spinorbitals(tei: NDArray, order: NDArray) -> NDArray:
