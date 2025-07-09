@@ -26,6 +26,9 @@ def test_dims_shapes_slices(ghf_data: GHF_Data) -> None:
     dims = ghf_ov_data.get_dims()
     shapes = ghf_ov_data.get_shapes()
 
+    assert dims['ref'] == 1
+    assert shapes['ref'] == (1)
+
     assert dims['singles'] == 40
     assert shapes['singles'] == (4, 10)
 
@@ -33,10 +36,11 @@ def test_dims_shapes_slices(ghf_data: GHF_Data) -> None:
     assert shapes['doubles'] == (4, 4, 10, 10)
 
     slices = ghf_ov_data.get_slices()
-    assert slices['singles'] == slice(0, 40, None)
-    assert slices['doubles'] == slice(40, 1640, None)
+    assert slices['ref'] == slice(0, 1, None)
+    assert slices['singles'] == slice(1, 41, None)
+    assert slices['doubles'] == slice(41, 1641, None)
 
-    assert ghf_ov_data.get_vector_dim() == 1640
+    assert ghf_ov_data.get_vector_dim() == 1641
 
 
 def test_go_around(ghf_data: GHF_Data):
@@ -63,15 +67,26 @@ def test_matmul():
     rng = np.random.default_rng(seed=TODAY)
     no = 10
     nv = 5
+    dim_r = 1
     dim_s = nv * no
     dim_d = nv * nv * no * no
+    dim_rr = dim_r * dim_r
+    dim_rs = dim_r * dim_s
+    dim_rd = dim_r * dim_d
+    dim_sr = dim_s * dim_r
     dim_ss = dim_s * dim_s
     dim_sd = dim_s * dim_d
+    dim_dr = dim_d * dim_r
     dim_ds = dim_d * dim_s
     dim_dd = dim_d * dim_d
     matrix_mbe = {
+        'rr': rng.random(size=dim_rr).reshape(1),
+        'rs': rng.random(size=dim_rs).reshape(nv, no),
+        'rd': rng.random(size=dim_rd).reshape(nv, nv, no, no),
+        'sr': rng.random(size=dim_sr).reshape(nv, no),
         'ss': rng.random(size=dim_ss).reshape(nv, no, nv, no),
         'sd': rng.random(size=dim_sd).reshape(nv, no, nv, nv, no, no),
+        'dr': rng.random(size=dim_dr).reshape(nv, nv, no, no),
         'ds': rng.random(size=dim_ds).reshape(nv, nv, no, no, nv, no),
         'dd': rng.random(size=dim_dd).reshape(nv, nv, no, no, nv, nv, no, no),
     }
@@ -81,10 +96,17 @@ def test_matmul():
     # vector.
     matrix_nda = np.block([
         [
+            matrix_mbe['rr'].reshape(dim_r, dim_r),
+            matrix_mbe['rs'].reshape(dim_r, dim_s),
+            matrix_mbe['rd'].reshape(dim_r, dim_d),
+        ],
+        [
+            matrix_mbe['sr'].reshape(dim_s, dim_r),
             matrix_mbe['ss'].reshape(dim_s, dim_s),
             matrix_mbe['sd'].reshape(dim_s, dim_d),
         ],
         [
+            matrix_mbe['dr'].reshape(dim_d, dim_r),
             matrix_mbe['ds'].reshape(dim_d, dim_s),
             matrix_mbe['dd'].reshape(dim_d, dim_d),
         ],
@@ -102,7 +124,24 @@ def test_matmul():
 
         test_vector_mbe  = GHF_CCSD_MBE.from_NDArray(test_vector, ghf_ov_data)
         mbe_result = GHF_CCSD_MBE(
+            ref=(
+                np.sum(matrix_mbe['rr'] * test_vector_mbe.ref)
+                +
+                np.einsum(
+                    'ai,ai->',
+                    matrix_mbe['rs'],
+                    test_vector_mbe.singles,
+                )
+                +
+                np.einsum(
+                    'abij,abij->',
+                    matrix_mbe['rd'],
+                    test_vector_mbe.doubles,
+                )
+            ),
             singles=(
+                matrix_mbe['sr'] * test_vector_mbe.ref
+                +
                 np.einsum(
                     'aibj,bj->ai',
                     matrix_mbe['ss'],
@@ -116,6 +155,8 @@ def test_matmul():
                 )
             ),
             doubles=(
+                matrix_mbe['dr'] * test_vector_mbe.ref
+                +
                 np.einsum(
                     'abjick,ck->abji',
                     matrix_mbe['ds'],
