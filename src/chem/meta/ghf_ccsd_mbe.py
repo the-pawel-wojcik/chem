@@ -118,6 +118,22 @@ class GHF_CCSD_MBE:
             (self.singles.reshape(-1, 1), self.doubles.reshape(-1, 1))
         ).flatten()
 
+    def flatten_single_count(self, ghf_ov_data: GHF_ov_data) -> NDArray:
+        nv = ghf_ov_data.nv
+        no = ghf_ov_data.no
+        dim_s = nv * no
+        dim_d = (nv * (nv - 1) // 2) * (no * (no - 1) // 2)
+        out = np.zeros(shape=(dim_s + dim_d))
+        out[0:dim_s] = self.singles.reshape(-1)
+        abij = 0
+        for a in range(0, nv):
+            for b in range(a + 1, nv):
+                for i in range(0, no):
+                    for j in range(i + 1, no):
+                        out[dim_s + abij] = self.doubles[a, b, i, j]
+                        abij += 1
+        return out
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, GHF_CCSD_MBE):
             return False
