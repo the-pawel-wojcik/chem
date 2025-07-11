@@ -1,24 +1,8 @@
-import pytest
-
 from chem.hf.ghf_data import wfn_to_GHF_Data, GHF_Data
-from chem.hf.electronic_structure import hf, ResultHF
+from chem.hf.electronic_structure import ResultHF
 from chem.meta.coordinates import Descartes
 from numpy import einsum
 import numpy as np
-
-
-@pytest.fixture(scope='session')
-def hf_result() -> ResultHF:
-    """ Geometry from CCCBDB: HF/STO-3G """
-    geometry = """
-    0 1
-    O  0.0  0.0000000  0.1271610
-    H  0.0  0.7580820 -0.5086420
-    H  0.0 -0.7580820 -0.5086420
-    symmetry c1
-    """
-    hf_result = hf(geometry=geometry, basis='sto-3g')
-    return hf_result
 
 
 def get_hf_energy(ghf_data: GHF_Data) -> float:
@@ -30,12 +14,12 @@ def get_hf_energy(ghf_data: GHF_Data) -> float:
     return float(energy)
 
 
-def test_constructor(hf_result: ResultHF):
-    wfn_to_GHF_Data(hf_result.wfn)
+def test_constructor(water_sto3g: ResultHF):
+    wfn_to_GHF_Data(water_sto3g.wfn)
 
 
-def test_energies(hf_result: ResultHF):
-    ghf_data = wfn_to_GHF_Data(hf_result.wfn)
+def test_energies(water_sto3g: ResultHF):
+    ghf_data = wfn_to_GHF_Data(water_sto3g.wfn)
     assert ghf_data.f.shape == (14, 14)
     fock_diagonal = np.array([-20.25157699, -20.25157699, -1.25754837,
     -1.25754837, -0.59385451, -0.59385451, -0.45972972, -0.45972972,
@@ -43,20 +27,20 @@ def test_energies(hf_result: ResultHF):
     assert np.allclose(fock_diagonal, ghf_data.f.diagonal(), atol=1e-7)
     energy = get_hf_energy(ghf_data)
     assert np.isclose(-83.87226577852897, energy, atol=1e-7)
-    nre = hf_result.molecule.nuclear_repulsion_energy()
+    nre = water_sto3g.molecule.nuclear_repulsion_energy()
     assert np.isclose(nre, 8.906479, atol=1e-6)  # value from CCCBDB
     assert np.isclose(energy + nre, -74.965901, atol=1e-6)  # value from CCCBDB
 
 
-def test_dipoles_shapes(hf_result: ResultHF):
-    ghf_data = wfn_to_GHF_Data(hf_result.wfn)
+def test_dipoles_shapes(water_sto3g: ResultHF):
+    ghf_data = wfn_to_GHF_Data(water_sto3g.wfn)
     for direction in Descartes:
         mu_component =  ghf_data.mu[direction]
         assert mu_component.shape == (14, 14)
 
 
-def test_dipole_values(hf_result: ResultHF) -> None:
-    ghf_data = wfn_to_GHF_Data(hf_result.wfn)
+def test_dipole_values(water_sto3g: ResultHF) -> None:
+    ghf_data = wfn_to_GHF_Data(water_sto3g.wfn)
     cccdbd_dipole_au = {
         Descartes.x: 0.0,
         Descartes.y: 0.0,
@@ -89,8 +73,8 @@ def test_dipole_values(hf_result: ResultHF) -> None:
         for direction in Descartes
     }
 
-    mol = hf_result.molecule
-    geo = hf_result.molecule.geometry().np
+    mol = water_sto3g.molecule
+    geo = water_sto3g.molecule.geometry().np
     my_dipole_nuclear = {
         Descartes.x: float(
             sum(mol.charge(i) * atom[0] for i, atom in enumerate(geo))

@@ -1,25 +1,10 @@
-import pytest
 import math
 
 from chem.hf.containers import ResultHF
 from chem.meta.coordinates import CARTESIAN, Descartes
-from chem.hf.electronic_structure import scf, hf
+from chem.hf.electronic_structure import scf
 from chem.hf.intermediates_builders import Intermediates, extract_intermediates
 import numpy as np
-
-
-@pytest.fixture(scope='session')
-def water_sto3g() -> ResultHF:
-    """ Geometry from CCCBDB: HF/STO-3G """
-    geometry = """
-    0 1
-    O  0.0  0.0000000  0.1271610
-    H  0.0  0.7580820 -0.5086420
-    H  0.0 -0.7580820 -0.5086420
-    symmetry c1
-    """
-    hf_result = hf(geometry=geometry, basis='sto-3g')
-    return hf_result
 
 
 def test_dipole_HF_water_sto3g(water_sto3g: ResultHF) -> None:
