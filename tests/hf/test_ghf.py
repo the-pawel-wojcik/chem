@@ -54,4 +54,81 @@ def test_dipoles_shapes(hf_result: ResultHF):
         mu_component =  ghf_data.mu[direction]
         assert mu_component.shape == (14, 14)
 
-# TODO: test dipole values too
+
+def test_dipole_values(hf_result: ResultHF) -> None:
+    ghf_data = wfn_to_GHF_Data(hf_result.wfn)
+    cccdbd_dipole_au = {
+        Descartes.x: 0.0,
+        Descartes.y: 0.0,
+        Descartes.z: -0.672372,
+    }
+
+    psi4_dipole_au_electronic = {
+        Descartes.x: 0.0,
+        Descartes.y: 0.0,
+        Descartes.z: 0.3860036,
+    }
+
+    psi4_dipole_au_nuclear = {
+        Descartes.x: 0.0,
+        Descartes.y: 0.0,
+        Descartes.z: -1.0583371,
+    }
+    psi4_dipole_au_total = {
+        direction: (
+            psi4_dipole_au_electronic[direction]
+            +
+            psi4_dipole_au_nuclear[direction]
+        ) for direction in Descartes
+    }
+
+    o = ghf_data.o
+    my_dipole_electronic = {
+        direction: float(sum(ghf_data.mu[direction].diagonal()[o]))
+        for direction in Descartes
+    }
+
+    mol = hf_result.molecule
+    geo = hf_result.molecule.geometry().np
+    my_dipole_nuclear = {
+        Descartes.x: float(
+            sum(mol.charge(i) * atom[0] for i, atom in enumerate(geo))
+        ),
+        Descartes.y: float(
+            sum(mol.charge(i) * atom[1] for i, atom in enumerate(geo))
+        ),
+        Descartes.z: float(
+            sum(mol.charge(i) * atom[2] for i, atom in enumerate(geo))
+        ),
+    }
+
+    my_dipole_total = {
+        direction: (
+            my_dipole_electronic[direction]
+            +
+            my_dipole_nuclear[direction]
+        )
+        for direction in Descartes
+    }
+
+    for direction in Descartes:
+        assert np.isclose(
+            my_dipole_total[direction],
+            cccdbd_dipole_au[direction],
+            atol=1e-4,
+        )
+        assert np.isclose(
+            my_dipole_electronic[direction],
+            psi4_dipole_au_electronic[direction],
+            atol=1e-3,  # only this well
+        )
+        assert np.isclose(
+            my_dipole_nuclear[direction],
+            psi4_dipole_au_nuclear[direction],
+            atol=1e-12,  # as good as you wish, both come from psi4
+        )
+        assert np.isclose(
+            cccdbd_dipole_au[direction],
+            psi4_dipole_au_total[direction],
+            atol=1e-4,  # fails at tighter
+        )
