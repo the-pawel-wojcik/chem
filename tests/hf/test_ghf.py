@@ -66,7 +66,7 @@ def test_dipole_values(hf_result: ResultHF) -> None:
     psi4_dipole_au_electronic = {
         Descartes.x: 0.0,
         Descartes.y: 0.0,
-        Descartes.z: 0.3860036,
+        Descartes.z: 0.3858840,
     }
 
     psi4_dipole_au_nuclear = {
@@ -74,6 +74,7 @@ def test_dipole_values(hf_result: ResultHF) -> None:
         Descartes.y: 0.0,
         Descartes.z: -1.0583371,
     }
+
     psi4_dipole_au_total = {
         direction: (
             psi4_dipole_au_electronic[direction]
@@ -115,12 +116,12 @@ def test_dipole_values(hf_result: ResultHF) -> None:
         assert np.isclose(
             my_dipole_total[direction],
             cccdbd_dipole_au[direction],
-            atol=1e-4,
+            atol=1e-4,  # CCCBDB does not match too well
         )
         assert np.isclose(
             my_dipole_electronic[direction],
             psi4_dipole_au_electronic[direction],
-            atol=1e-3,  # only this well
+            atol=1e-7,  # all digits printed by psi4
         )
         assert np.isclose(
             my_dipole_nuclear[direction],
@@ -130,5 +131,5 @@ def test_dipole_values(hf_result: ResultHF) -> None:
         assert np.isclose(
             cccdbd_dipole_au[direction],
             psi4_dipole_au_total[direction],
-            atol=1e-4,  # fails at tighter
+            atol=1e-4,  # CCCBDB does not match well
         )
