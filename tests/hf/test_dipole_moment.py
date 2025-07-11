@@ -8,14 +8,14 @@ def test_dipole_HF_water_ccpVDZ():
     mol, _, wfn = scf()
     uhf_data: Intermediates = extract_intermediates(wfn)
     psi_dipole_electronic = {
-        Descartes.x: -0.0000000,
-        Descartes.y: 0.0000000,
+        Descartes.x: 0.0,
+        Descartes.y: 0.0,
         Descartes.z: 0.1588593,
     }
 
     psi_dipole_nulcear = {
-        Descartes.x: 0.0000000,
-        Descartes.y: 0.0000000,
+        Descartes.x: 0.0,
+        Descartes.y: 0.0,
         Descartes.z: -0.9631188,
     }
     #
