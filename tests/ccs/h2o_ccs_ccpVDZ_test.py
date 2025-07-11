@@ -1,19 +1,16 @@
 import math
-import pickle
 
 from chem.ccs.containers import UHF_CCS_Lambda_Data
 from chem.ccs.uhf_ccs import UHF_CCS
-from chem.hf.intermediates_builders import Intermediates
+from chem.hf.intermediates_builders import extract_intermediates
+from chem.hf.electronic_structure import ResultHF
 import numpy as np
 
 
-def test_cc_equations():
-    with open('pickles/h2o_uhf_ccpVDZ.pickle', 'rb') as pickle_file:
-        data = pickle.load(pickle_file)
-
-    nuclear_repulsion_energy: float = data['nuclear_repulsion_energy']
-    uhf_total_energy: float = data['uhf_energy']
-    uhf_data: Intermediates = data['uhf_data']
+def test_cc_equations(water_ccpVDZ: ResultHF) -> None:
+    nuclear_repulsion_energy = water_ccpVDZ.molecule.nuclear_repulsion_energy()
+    uhf_total_energy = water_ccpVDZ.hf_energy
+    uhf_data = extract_intermediates(water_ccpVDZ.wfn)
 
     uhf_energy = uhf_total_energy - nuclear_repulsion_energy
 
@@ -31,18 +28,16 @@ def test_cc_equations():
     t1_bb_norm = float(np.linalg.norm(ccs.data.t1_bb))
     assert math.isclose(t1_aa_norm, 0.0, abs_tol=1e-10)
     assert math.isclose(t1_bb_norm, 0.0, abs_tol=1e-10)
-    assert math.isclose(9.3007568224, nuclear_repulsion_energy, abs_tol=1e-10)
-    assert math.isclose(-85.3278103352, uhf_energy, abs_tol=1e-10)
-    assert math.isclose(-85.3278103352, uhf_ccs_energy, abs_tol=1e-10)
-    assert math.isclose(-76.0270535127, uhf_total_energy, abs_tol=1e-8)
-    assert math.isclose(-76.0270535127, uhf_ccs_total, abs_tol=1e-8)
+    # 9.300820 comes from CCCBDB for water @ HF/cc-pvDZ
+    assert math.isclose(9.300820, nuclear_repulsion_energy, abs_tol=1e-6)
+    assert math.isclose(-85.327873230, uhf_energy, abs_tol=1e-9)
+    assert math.isclose(-85.327873230, uhf_ccs_energy, abs_tol=1e-9)
+    assert math.isclose(-76.027053513, uhf_total_energy, abs_tol=1e-9)
+    assert math.isclose(-76.027053513, uhf_ccs_total, abs_tol=1e-9)
 
 
-def test_cc_lambda_equations():
-    with open('pickles/h2o_uhf_ccpVDZ.pickle', 'rb') as pickle_file:
-        data = pickle.load(pickle_file)
-
-    uhf_data: Intermediates = data['uhf_data']
+def test_cc_lambda_equations(water_ccpVDZ: ResultHF) -> None:
+    uhf_data = extract_intermediates(water_ccpVDZ.wfn)
     ccs = UHF_CCS(scf_data=uhf_data, use_diis=False)
     ccs.verbose = 1
     ccs.solve_cc_equations()
@@ -55,8 +50,3 @@ def test_cc_lambda_equations():
         )
     )
     assert math.isclose(lambda_norm, 0., abs_tol=1e-8)
-
-
-if __name__ == "__main__":
-    # test_cc_equations()
-    test_cc_lambda_equations()
