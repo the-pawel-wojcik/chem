@@ -1,6 +1,6 @@
 import pytest
 
-from chem.hf.electronic_structure import hf, ResultHF
+from chem.hf.electronic_structure import ResultHF
 from chem.hf.ghf_data import wfn_to_GHF_Data, GHF_Data
 from chem.hf.util import turn_GHF_Data_to_GHF_ov_data
 from chem.meta.ghf_ccsd_mbe import GHF_CCSD_MBE, GHF_ov_data
@@ -8,17 +8,8 @@ import numpy as np
 
 
 @pytest.fixture(scope='session')
-def ghf_data() -> GHF_Data:
-    """ Geometry from CCCBDB: HF/STO-3G """
-    geometry = """
-    0 1
-    O1	0.0000   0.0000   0.1272
-    H2	0.0000   0.7581  -0.5086
-    H3	0.0000  -0.7581  -0.5086
-    symmetry c1
-    """
-    hf_result: ResultHF = hf(geometry=geometry, basis='sto-3g')
-    return wfn_to_GHF_Data(hf_result.wfn)
+def ghf_data(water_sto3g: ResultHF) -> GHF_Data:
+    return wfn_to_GHF_Data(water_sto3g.wfn)
 
 
 def test_dims_shapes_slices(ghf_data: GHF_Data) -> None:
@@ -39,7 +30,7 @@ def test_dims_shapes_slices(ghf_data: GHF_Data) -> None:
     assert ghf_ov_data.get_vector_dim() == 1640
 
 
-def test_go_around(ghf_data: GHF_Data):
+def test_go_around(ghf_data: GHF_Data) -> None:
     """ Test that the conversion from an NDArray to MBE and back is an identity
     transformation. """
     ghf_ov_data = turn_GHF_Data_to_GHF_ov_data(ghf_data)
@@ -55,7 +46,7 @@ def test_go_around(ghf_data: GHF_Data):
         assert np.allclose(test_vector, all_around)
 
 
-def test_matmul():
+def test_matmul() -> None:
     """ Test that the flattened MBE matmul works as planned. """
     TODAY = 20250708
 
@@ -132,5 +123,5 @@ def test_matmul():
         assert np.allclose(mbe_result.flatten(), nda_result)
 
 
-def test_GHF_ov_data_constructor(ghf_data: GHF_Data):
+def test_GHF_ov_data_constructor(ghf_data: GHF_Data) -> None:
     turn_GHF_Data_to_GHF_ov_data(ghf_data)

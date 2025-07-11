@@ -4,7 +4,7 @@ from chem.hf.containers import ResultHF
 from chem.hf.electronic_structure import hf
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def water_sto3g() -> ResultHF:
     """ Geometry from CCCBDB: HF/STO-3G """
     geometry = """
@@ -18,7 +18,7 @@ def water_sto3g() -> ResultHF:
     return hf_result
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def water_ccpVDZ() -> ResultHF:
     """ Geometry from CCCBDB: HF/cc-pVDZ """
     geometry = """
