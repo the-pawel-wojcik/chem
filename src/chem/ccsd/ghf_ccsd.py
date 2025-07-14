@@ -8,8 +8,12 @@ from chem.ccsd.equations.ghf.cc_residuals.singles import get_singles_residual
 from chem.ccsd.equations.ghf.energy.energy import get_ghf_ccsd_energy
 from chem.ccsd.equations.ghf.lmbd.singles import get_lambda_singles_residual
 from chem.ccsd.equations.ghf.lmbd.doubles import get_lambda_doubles_residual
+from chem.ccsd.equations.ghf.dipole_moment.edm import (
+    get_mux, get_muy, get_muz
+)
 from chem.ccsd.equations.ghf.util import GHF_Generators_Input
 from chem.hf.ghf_data import GHF_Data
+from chem.meta.coordinates import Descartes
 import numpy as np
 
 
@@ -146,7 +150,27 @@ class GHF_CCSD:
             raise RuntimeError("Lambda-GHF_CCSD didn't converge.")
         self.lambda_cc_solved = True
 
+    def _get_electronic_electric_dipole_moment(self) -> dict[Descartes, float]:
+        if self.lambda_cc_solved is False:
+            self.solve_lambda_equations()
+        kwargs = GHF_Generators_Input(
+            ghf_data=self.ghf_data,
+            ghf_ccsd_data=self.data,
+        )
+        electronic_electric_dipole_moment = {
+            Descartes.x: float(get_mux(**kwargs)),
+            Descartes.y: float(get_muy(**kwargs)),
+            Descartes.z: float(get_muz(**kwargs)),
+        }
+        return electronic_electric_dipole_moment
+
     def get_energy(self) -> float:
+        # TODO: the energy calculation is used before the CC equations are
+        # solved but it might be better if the user-facing interface shows an
+        # error if this is used
+        # Move this get_energy to _get_energy and in get_energy check if the
+        # energy check if cc_solved is True and raise and solve them first if
+        # not solved yet.
         ghf_ccsd_energy = get_ghf_ccsd_energy(
             ghf_data=self.ghf_data,
             ghf_ccsd_data=self.data,
