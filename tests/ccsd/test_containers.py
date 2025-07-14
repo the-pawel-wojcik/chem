@@ -1,29 +1,24 @@
-from chem.hf.electronic_structure import hf
+import pytest
+from chem.hf.containers import ResultHF
 from chem.hf.intermediates_builders import (
     Intermediates,
     extract_intermediates,
 )
 from chem.hf.util import turn_NDArray_to_Spin_MBE, turn_UHF_Data_to_UHF_ov_data
 from chem.meta.spin_mbe import E1_spin, E2_spin
-import pytest
 import numpy as np
 
 
 @pytest.fixture(scope='session')
-def intermediates() -> Intermediates:
-    """ Geometry from CCCBDB: HF/STO-3G """
-    geometry = """
-    0 1
-    O1	0.0000   0.0000   0.1272
-    H2	0.0000   0.7581  -0.5086
-    H3	0.0000  -0.7581  -0.5086
-    symmetry c1
-    """
-    hf_result = hf(geometry=geometry, basis='sto-3g')
-    return extract_intermediates(hf_result.wfn)
+def intermediates(water_sto3g: ResultHF) -> Intermediates:
+    return extract_intermediates(water_sto3g.wfn)
 
 
-def test_dims_shapes_slices(intermediates: Intermediates):
+def test_UHF_ov_data_constructor(intermediates: Intermediates) -> None:
+    turn_UHF_Data_to_UHF_ov_data(intermediates)
+
+
+def test_dims_shapes_slices(intermediates: Intermediates) -> None:
     uhf_ov_data = turn_UHF_Data_to_UHF_ov_data(intermediates)
     dims = uhf_ov_data.get_dims()
     shapes = uhf_ov_data.get_shapes()
@@ -47,14 +42,14 @@ def test_dims_shapes_slices(intermediates: Intermediates):
     assert slices[E2_spin.bbbb] == slice(520, 620, None)
 
 
-def test_get_dims(intermediates: Intermediates):
+def test_get_dims(intermediates: Intermediates) -> None:
     uhf_ov_data = turn_UHF_Data_to_UHF_ov_data(intermediates)
     assert uhf_ov_data.get_singles_dim() == 20
     assert uhf_ov_data.get_doubles_dim() == 600
     assert uhf_ov_data.get_vector_dim() == 620
 
 
-def test_go_around(intermediates: Intermediates):
+def test_go_around(intermediates: Intermediates) -> None:
     """ Test that the conversion from an NDArray to MBE and back is an identity
     transformation. """
     uhf_ov_data = turn_UHF_Data_to_UHF_ov_data(intermediates)
@@ -70,7 +65,7 @@ def test_go_around(intermediates: Intermediates):
         assert np.allclose(test_vector, all_around)
 
 
-def test_block_match(intermediates: Intermediates):
+def test_block_match(intermediates: Intermediates) -> None:
     """ Test that blocks land in the right spots when MBE-ed. """
     uhf_ov_data = turn_UHF_Data_to_UHF_ov_data(intermediates)
     full_mbe_dim = uhf_ov_data.get_vector_dim()
@@ -88,7 +83,3 @@ def test_block_match(intermediates: Intermediates):
         for block in E2_spin:
             manual_subblock = test_vector[slices[block]].reshape(shapes[block])
             assert np.allclose(manual_subblock, test_vector_mbe.doubles[block])
-
-
-def test_UHF_ov_data_constructor(intermediates: Intermediates):
-    turn_UHF_Data_to_UHF_ov_data(intermediates)
