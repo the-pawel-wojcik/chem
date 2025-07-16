@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from numpy.typing import NDArray
-
 from chem.ccsd.containers import GHF_CCSD_Data, GHF_CCSD_Lambda_Data
 from chem.ccsd.equations.ghf.cc_residuals.doubles import get_doubles_residual
 from chem.ccsd.equations.ghf.cc_residuals.singles import get_singles_residual
@@ -11,10 +9,12 @@ from chem.ccsd.equations.ghf.lmbd.doubles import get_lambda_doubles_residual
 from chem.ccsd.equations.ghf.dipole_moment.edm import (
     get_mux, get_muy, get_muz
 )
+from chem.ccsd.equations.ghf.opdm.opdm import get_opdm
 from chem.ccsd.equations.ghf.util import GHF_Generators_Input
 from chem.hf.ghf_data import GHF_Data
 from chem.meta.coordinates import Descartes
 import numpy as np
+from numpy.typing import NDArray
 
 
 @dataclass
@@ -163,6 +163,26 @@ class GHF_CCSD:
             Descartes.z: float(get_muz(**kwargs)),
         }
         return electronic_electric_dipole_moment
+
+    def _get_electronic_electric_dipole_moment_via_opdm(
+        self,
+    # ) -> dict[Descartes, float]:
+    ) -> NDArray:
+        if self.lambda_cc_solved is False:
+            self.solve_lambda_equations()
+        kwargs = GHF_Generators_Input(
+            ghf_data=self.ghf_data,
+            ghf_ccsd_data=self.data,
+        )
+        opdm = get_opdm(**kwargs)
+        # electronic_electric_dipole_moment = {
+        #     Descartes.x: float(get_mux(**kwargs)),
+        #     Descartes.y: float(get_muy(**kwargs)),
+        #     Descartes.z: float(get_muz(**kwargs)),
+        # }
+        # return electronic_electric_dipole_moment
+        return opdm
+
 
     def get_energy(self) -> float:
         # TODO: the energy calculation is used before the CC equations are
