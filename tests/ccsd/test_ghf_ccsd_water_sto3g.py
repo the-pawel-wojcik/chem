@@ -7,7 +7,7 @@ import numpy as np
 
 
 PSI4_NRE_H2O_STO3G = 8.9064754830195323
-PSI4_CCSD_ENERGY_H2O_STO3G = -75.020284329413670
+PSI4_CCSD_ENERGY_H2O_STO3G = -75.020284329414
 PSI4_CCSD_DIPOLE_ELECTRONIC = {
     Descartes.x: 0.0,
     Descartes.y: 0.0,
@@ -98,3 +98,10 @@ def test_dipole_moment(ghf_data: GHF_Data) -> None:
     for key, val in electronic_edm.items():
         assert np.isclose(PSI4_CCSD_DIPOLE_ELECTRONIC[key], val, atol=1e-2)
     # TODO: This is not a consisent result. Figure out what's wrong
+
+    # eEDM_via_opdm = ccsd._get_electronic_electric_dipole_moment_via_opdm()
+
+    opdm = ccsd._get_electronic_electric_dipole_moment_via_opdm()
+    print(f'{opdm.shape=}')
+    mux = ghf_data.mu[Descartes.x]
+    print(f'{mux.shape=}')
