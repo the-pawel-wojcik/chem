@@ -2,7 +2,6 @@ import math
 
 from chem.hf.containers import ResultHF
 from chem.meta.coordinates import CARTESIAN, Descartes
-from chem.hf.electronic_structure import scf
 from chem.hf.intermediates_builders import Intermediates, extract_intermediates
 import numpy as np
 
@@ -87,12 +86,12 @@ def test_dipole_HF_water_sto3g(water_sto3g: ResultHF) -> None:
         assert np.isclose(
             my_dipole_electronic[direction],
             psi4_dipole_au_electronic[direction],
-            atol=1e-7,  # all digits printed in the psi4 output match
+            atol=1e-7,  # all digits printed in the Psi4 output match
         )
         assert np.isclose(
             my_dipole_nuclear[direction],
             psi4_dipole_au_nuclear[direction],
-            atol=1e-12,  # as good as you wish, both come from psi4
+            atol=1e-12,  # as good as you wish, both come from Psi4
         )
         assert np.isclose(
             cccdbd_dipole_au[direction],
@@ -101,26 +100,20 @@ def test_dipole_HF_water_sto3g(water_sto3g: ResultHF) -> None:
         )
 
 
-def test_dipole_HF_water_ccpVDZ():
-    mol, _, wfn = scf()
-    uhf_data: Intermediates = extract_intermediates(wfn)
+def test_dipole_HF_water_ccpVDZ(water_ccpVDZ: ResultHF) -> None:
+    mol = water_ccpVDZ.molecule
+    uhf_data: Intermediates = extract_intermediates(water_ccpVDZ.wfn)
     psi_dipole_electronic = {
         Descartes.x: 0.0,
         Descartes.y: 0.0,
-        Descartes.z: 0.1588593,
+        Descartes.z: 0.1588552,
     }
 
     psi_dipole_nulcear = {
         Descartes.x: 0.0,
         Descartes.y: 0.0,
-        Descartes.z: -0.9631188,
+        Descartes.z: -0.9631122,
     }
-    #
-    # psi_dipole_total = {
-    #     Descartes.x: 0.0000000,
-    #     Descartes.y: 0.0000000,
-    #     Descartes.z: -0.8042596,
-    # }
 
     oa = uhf_data.oa
     ob = uhf_data.ob
@@ -159,11 +152,11 @@ def test_dipole_HF_water_ccpVDZ():
         assert math.isclose(
             my_dipole_electronic[coord],
             psi_dipole_electronic[coord],
-            abs_tol=1e-6,
+            abs_tol=1e-7,  # Matches all digits printed by Psi4
         )
 
         assert math.isclose(
             my_dipole_nuclear[coord],
             psi_dipole_nulcear[coord],
-            abs_tol=1e-6,
+            abs_tol=1e-7,  # Matches all digits printed by Psi4
         )
