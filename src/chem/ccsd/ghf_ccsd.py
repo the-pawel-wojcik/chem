@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import product
 
 from numpy.typing import NDArray
 
@@ -26,6 +27,7 @@ class GHF_CCSD_Config:
     residuals_convergence: float = 1e-10
     shift_1e: float = 0.0
     shift_2e: float = 0.0
+    t_amp_print_threshold: float = 0.01
 
 
 class GHF_CCSD:
@@ -176,6 +178,65 @@ class GHF_CCSD:
             ghf_ccsd_data=self.data,
         )
         return float(ghf_ccsd_energy)
+
+    def print_leading_t_amplitudes(self) -> None:
+        top_t1 = self._find_leading_t1_amplitudes()
+        top_t2 = self._find_leading_t2_amplitudes()
+
+        top_t1.sort(key=lambda x: abs(x['amp']), reverse=True)
+        top_t2.sort(key=lambda x: abs(x['amp']), reverse=True)
+
+        THRESHOLD = self.CONFIG.t_amp_print_threshold
+        with np.printoptions(precision=3, suppress=True):
+            print(f"t1 amplitudes greater than {THRESHOLD:.0e}:")
+            print(f"{'v':>3s} {'o':>3s} {'t1[v,o]':^7s}")
+            for top in top_t1:
+                print(f'{top['v']:>3d} {top['o']:>3d} {top['amp']:+7.3f}')
+            print(f'Norm the t1 = {np.linalg.norm(self.data.t1):.3f}')
+
+            print(f"t2 amplitudes greater than {THRESHOLD:.0e}:")
+            print(
+                f"{'vl':>3s} {'vr':>3s} {'ol':>3s} {'or':>3s}"
+                f" {'t2[vl,vr,ol,or]'}"
+            )
+            for top in top_t2:
+                print(
+                    f'{top['vl']:>3d} {top['vr']:>3d} {top['ol']:>3d}'
+                    f' {top['or']:>3d} {top['amp']:+7.3f}'
+                )
+            print(f'Norm the t2 = {np.linalg.norm(self.data.t2):.3f}')
+
+    def _find_leading_t1_amplitudes(self) -> list[dict[str, int | float]]:
+        t1 = self.data.t1
+        no = self.ghf_data.no
+        nv = self.ghf_data.nv
+        top_t1 = []
+        THRESHOLD = self.CONFIG.t_amp_print_threshold
+        for v, o in product(range(nv), range(no)):
+            amp = t1[v, o]
+            if abs(amp) > THRESHOLD:
+                top_t1.append({'v': v, 'o': o, 'amp': amp})
+        return top_t1
+
+    def _find_leading_t2_amplitudes(self) -> list[dict[str, int | float]]:
+        t2 = self.data.t2
+        no = self.ghf_data.no
+        nv = self.ghf_data.nv
+        THRESHOLD = self.CONFIG.t_amp_print_threshold
+        top_t2 = []
+        for virl, virr, occl, occr in product(
+            range(nv), range(nv), range(no), range(no)
+        ):
+            amp = t2[virl, virr, occl, occr]
+            if abs(amp) > THRESHOLD:
+                top_t2.append({
+                    'vl': virl,
+                    'vr': virr,
+                    'ol': occl,
+                    'or': occr,
+                    'amp': amp
+                })
+        return top_t2
 
     def calculate_residuals(self):
         residuals = dict()
