@@ -167,22 +167,16 @@ class GHF_CCSD:
 
     def _get_electronic_electric_dipole_moment_via_opdm(
         self,
-    # ) -> dict[Descartes, float]:
-    ) -> NDArray:
+    ) -> dict[Descartes, float]:
         if self.lambda_cc_solved is False:
             self.solve_lambda_equations()
-        kwargs = GHF_Generators_Input(
-            ghf_data=self.ghf_data,
-            ghf_ccsd_data=self.data,
-        )
-        opdm = get_opdm(**kwargs)
-        # electronic_electric_dipole_moment = {
-        #     Descartes.x: float(get_mux(**kwargs)),
-        #     Descartes.y: float(get_muy(**kwargs)),
-        #     Descartes.z: float(get_muz(**kwargs)),
-        # }
-        # return electronic_electric_dipole_moment
-        return opdm
+        ghf_data = self.ghf_data
+        opdm = get_opdm(ghf_data=ghf_data, ghf_ccsd_data=self.data)
+        electronic_electric_dipole_moment = {
+            dir: float(np.einsum('ij,ji->', opdm, ghf_data.mu[dir]))
+            for dir in Descartes
+        }
+        return electronic_electric_dipole_moment
 
 
     def get_energy(self) -> float:
