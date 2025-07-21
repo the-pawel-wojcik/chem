@@ -32,14 +32,8 @@ def test_opdm(ghf_ccsd_water_sto3g: GHF_CCSD) -> None:
     np.set_printoptions(precision=3, suppress=True)
     assert not np.allclose(opdm, opdm.T, atol=1e-4)
     # TODO: is the CC OPDM really expected to be non-symmetric
-    svd: SVDResult = np.linalg.svd(opdm)
-    svalues = svd.S
-    SVD_PRINT_THRES = 1e-3
-    two_sum = 0.0
-    for svid, singular in enumerate(svalues):
-        if svid % 2 == 0:
-            two_sum = singular
-        else:
-            two_sum += singular
-        if SVD_PRINT_THRES < singular < 1 - SVD_PRINT_THRES:
-            print(f'{svid:>3d}: {singular:.3f} [{two_sum:.3f}]')
+
+    # TODO: test these occupations against expected values
+    svalues = ccsd._get_no_occupations()
+    SVD_PRINT_THRESH = 1e-3
+    ccsd.print_no_occupations(threshold=SVD_PRINT_THRESH)

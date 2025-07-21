@@ -178,6 +178,20 @@ class GHF_CCSD:
         }
         return electronic_electric_dipole_moment
 
+    def _get_no_occupations(self) -> NDArray:
+        opdm = get_opdm(ghf_data=self.ghf_data, ghf_ccsd_data=self.data)
+        svd_result = np.linalg.svd(opdm)
+        return svd_result.S
+
+    def print_no_occupations(self, threshold: float = 1e-2) -> None:
+        """ Prints a list of natural orbital occupations. By default prints
+        only the occupations that differ from 0.0 or from 1.0 by more than the
+        value of `threshold`. """
+        svalues = self._get_no_occupations()
+        print("Natural Orbital Occupations:")
+        for sv_id, singular in enumerate(svalues):
+            if threshold < singular < 1 - threshold:
+                print(f'{sv_id:>3d}: {singular:.4f}')
 
     def get_energy(self) -> float:
         # TODO: the energy calculation is used before the CC equations are
