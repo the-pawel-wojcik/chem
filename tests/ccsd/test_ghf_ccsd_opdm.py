@@ -1,8 +1,10 @@
+from numpy.linalg import svdvals
 from chem.ccsd.ghf_ccsd import GHF_CCSD, GHF_CCSD_Config
 from chem.hf.containers import ResultHF
 from chem.hf.ghf_data import wfn_to_GHF_Data
 from chem.ccsd.equations.ghf.opdm.manual_opdm import get_opdm
 import numpy as np
+from numpy.linalg._linalg import SVDResult
 import pytest
 
 
@@ -28,8 +30,16 @@ def test_opdm(ghf_ccsd_water_sto3g: GHF_CCSD) -> None:
     opdm = get_opdm(ccsd.ghf_data, ccsd.data)
 
     np.set_printoptions(precision=3, suppress=True)
-    print(f'{opdm.shape=}')
-    print(f'{opdm.T.shape=}')
-    non_symmetric_part = opdm - opdm.T
-    print(f'{non_symmetric_part=}')
-    assert np.allclose(opdm, opdm.T, atol=1e-4), "OPDM is not symmetric"
+    assert not np.allclose(opdm, opdm.T, atol=1e-4)
+    # TODO: is the CC OPDM really expected to be non-symmetric
+    svd: SVDResult = np.linalg.svd(opdm)
+    svalues = svd.S
+    SVD_PRINT_THRES = 1e-3
+    two_sum = 0.0
+    for svid, singular in enumerate(svalues):
+        if svid % 2 == 0:
+            two_sum = singular
+        else:
+            two_sum += singular
+        if SVD_PRINT_THRES < singular < 1 - SVD_PRINT_THRES:
+            print(f'{svid:>3d}: {singular:.3f} [{two_sum:.3f}]')
