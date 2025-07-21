@@ -9,7 +9,8 @@ from chem.ccsd.equations.ghf.lmbd.doubles import get_lambda_doubles_residual
 from chem.ccsd.equations.ghf.dipole_moment.edm import (
     get_mux, get_muy, get_muz
 )
-from chem.ccsd.equations.ghf.opdm.opdm import get_opdm
+# from chem.ccsd.equations.ghf.opdm.opdm import get_opdm
+from chem.ccsd.equations.ghf.opdm.manual_opdm import get_opdm
 from chem.ccsd.equations.ghf.util import GHF_Generators_Input
 from chem.hf.ghf_data import GHF_Data
 from chem.meta.coordinates import Descartes
