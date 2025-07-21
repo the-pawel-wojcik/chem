@@ -109,3 +109,28 @@ def test_dipole_moment(ghf_data: GHF_Data) -> None:
     # The two different ways of fiding the eEDM coincide
     for dir in Descartes:
         assert np.isclose(eEDM_via_opdm[dir], electronic_edm[dir], atol=1e-12)
+
+    print()
+    print('Electronic part of the electric dipole moment')
+    print('       Psi      OPDM      <mu>')
+    fmt=' 8.6f'
+    for dir in Descartes:
+        print(
+            f'{dir}:'
+            f' {PSI4_CCSD_DIPOLE_ELECTRONIC[dir]:{fmt}}'
+            f' {eEDM_via_opdm[dir]:{fmt}}'
+            f' {electronic_edm[dir]:{fmt}}'
+        )
+    print('Total electric dipole moment')
+    print('       Psi      OPDM      <mu>')
+    for dir in Descartes:
+        psi = PSI4_CCSD_DIPOLE_ELECTRONIC[dir] + PSI4_CCSD_DIPOLE_NUCLEAR[dir]
+        via_opdm = eEDM_via_opdm[dir] + PSI4_CCSD_DIPOLE_NUCLEAR[dir]
+        via_exp = electronic_edm[dir] + PSI4_CCSD_DIPOLE_NUCLEAR[dir]
+
+        print(
+            f'{dir}:'
+            f' {psi:{fmt}}'
+            f' {via_opdm:{fmt}}'
+            f' {via_exp:{fmt}}'
+        )
