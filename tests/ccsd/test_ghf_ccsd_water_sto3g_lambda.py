@@ -33,6 +33,7 @@ def test_lambda_solver(
     print('Solving the GHF-CCSD Equations.')
     ccsd.solve_cc_equations()
     print('GHF-CCSD Converged.')
+    ccsd.print_leading_t_amplitudes()
     cc_energy = ccsd.get_energy()
     print(f'Electronic GHF-CCSD energy = {cc_energy:.5f} Ha.')
     total_cc_energy = cc_energy + nuclear_repulsion_energy
@@ -40,3 +41,8 @@ def test_lambda_solver(
     print()
     print('Solving the GHF-CCSD Lambda Equations')
     ccsd.solve_lambda_equations()
+    ccsd.print_leading_lambda_amplitudes()
+    eEDM = ccsd._get_electronic_electric_dipole_moment()
+    print("Electronic Electric Dipole Moment:")
+    for key, value in eEDM.items():
+        print(f'{key}: {value: .6f}')
