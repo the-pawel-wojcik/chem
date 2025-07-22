@@ -206,6 +206,40 @@ class GHF_CCSD:
                 )
             print(f'Norm the t2 = {np.linalg.norm(self.data.t2):.3f}')
 
+    def print_leading_lambda_amplitudes(self) -> None:
+        if not self.lambda_cc_solved:
+            print("No lambda amplitudes available for printing.")
+            print("Lambda equations not solved.")
+            return
+        assert self.data.lmbda is not None
+
+        top_l1 = self._find_leading_l1_amplitudes()
+        top_l2 = self._find_leading_l2_amplitudes()
+
+        top_l1.sort(key=lambda x: abs(x['amp']), reverse=True)
+        top_l2.sort(key=lambda x: abs(x['amp']), reverse=True)
+
+        THRESHOLD = self.CONFIG.t_amp_print_threshold
+        with np.printoptions(precision=3, suppress=True):
+            print(f"l1 amplitudes greater than {THRESHOLD:.0e}:")
+            print(f"{'o':>3s} {'v':>3s} {'l1[o,v]':^7s}")
+            for top in top_l1:
+                print(f'{top['o']:>3d} {top['v']:>3d} {top['amp']:+7.3f}')
+            print(f'Norm the l1 = {np.linalg.norm(self.data.lmbda.l1):.3f}')
+
+            print(f"l2 amplitudes greater than {THRESHOLD:.0e}:")
+            print(
+                f"{'ol':>3s} {'or':>3s} {'vl':>3s} {'vr':>3s}"
+                f" {'l2[ol,or,vl,vr]'}"
+            )
+            for top in top_l2:
+                print(
+                    f'{top['ol']:>3d} {top['or']:>3d}'
+                    f' {top['vl']:>3d} {top['vr']:>3d}'
+                    f' {top['amp']:+7.3f}'
+                )
+            print(f'Norm the l2 = {np.linalg.norm(self.data.lmbda.l2):.3f}')
+
     def _find_leading_t1_amplitudes(self) -> list[dict[str, int | float]]:
         t1 = self.data.t1
         no = self.ghf_data.no
@@ -237,6 +271,40 @@ class GHF_CCSD:
                     'amp': amp
                 })
         return top_t2
+
+    def _find_leading_l1_amplitudes(self) -> list[dict[str, int | float]]:
+        assert self.data.lmbda is not None
+        l1 = self.data.lmbda.l1
+        no = self.ghf_data.no
+        nv = self.ghf_data.nv
+        top_l1 = []
+        THRESHOLD = self.CONFIG.t_amp_print_threshold
+        for o, v in product(range(no), range(nv)):
+            amp = l1[o, v]
+            if abs(amp) > THRESHOLD:
+                top_l1.append({'v': v, 'o': o, 'amp': amp})
+        return top_l1
+
+    def _find_leading_l2_amplitudes(self) -> list[dict[str, int | float]]:
+        assert self.data.lmbda is not None
+        l2 = self.data.lmbda.l2
+        no = self.ghf_data.no
+        nv = self.ghf_data.nv
+        THRESHOLD = self.CONFIG.t_amp_print_threshold
+        top_l2 = []
+        for occl, occr, virl, virr in product(
+            range(no), range(no), range(nv), range(nv)
+        ):
+            amp = l2[occl, occr, virl, virr]
+            if abs(amp) > THRESHOLD:
+                top_l2.append({
+                    'vl': virl,
+                    'vr': virr,
+                    'ol': occl,
+                    'or': occr,
+                    'amp': amp
+                })
+        return top_l2
 
     def calculate_residuals(self):
         residuals = dict()
