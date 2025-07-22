@@ -134,9 +134,9 @@ class GHF_CCSD:
         MAX_CCSD_ITER = self.CONFIG.max_iterations
         ENERGY_CONVERGENCE = self.CONFIG.energy_convergence
         RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
-        CC_ENERGY = self.get_energy()
         if self.cc_solved is False:
             self.solve_cc_equations()
+        CC_ENERGY = self.get_energy()
 
         self.initialize_lambda()
 

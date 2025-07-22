@@ -40,11 +40,10 @@ def ghf_data(water_sto3g: ResultHF) -> GHF_Data:
     return wfn_to_GHF_Data(water_sto3g.wfn)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize(
     argnames='ghf_ccsd_config',
     argvalues= [
-        pytest.param(GHF_CCSD_Config(verbose=1, use_diis=False), id='no_diis'),
+        pytest.param(GHF_CCSD_Config(verbose=0, use_diis=False), id='no_diis'),
         # pytest.param(GHF_CCSD_Config(verbose=1), id='default'),
     ]
 )
@@ -81,26 +80,23 @@ def test_ccsd_energy(
 #     assert np.isclose(ghf_ccsd_total_energy, -75.02028564818042, atol=1e-5)
 
 
-@pytest.mark.skip
-def test_lambda_solver(ghf_data: GHF_Data) -> None:
-    ccsd = GHF_CCSD(ghf_data, config=GHF_CCSD_Config(verbose=True))
-    ccsd.solve_lambda_equations()
-
-
 def test_dipole_moment(ghf_data: GHF_Data) -> None:
     ccsd = GHF_CCSD(
         ghf_data=ghf_data,
         config=GHF_CCSD_Config(
             verbose=0,
+            use_diis=False,
+            max_iterations=100,
             energy_convergence=1e-12,
             residuals_convergence=1e-12,
+            shift_1e=0.,
+            shift_2e=0.,
         ),
     )
     electronic_edm = ccsd._get_electronic_electric_dipole_moment()
-    # TODO: This is not a consisent result. Figure out what's wrong
     print()
     print("electronic part of the electric dipole moment")
     print("     paweł       psi4")
     for key, val in electronic_edm.items():
-        assert np.isclose(PSI4_CCSD_DIPOLE_ELECTRONIC[key], val, atol=1e-2)
+        assert np.isclose(PSI4_CCSD_DIPOLE_ELECTRONIC[key], val, atol=1e-7)
         print(f'{key}: {val: 10.6f} {PSI4_CCSD_DIPOLE_ELECTRONIC[key]: 10.6f}')
