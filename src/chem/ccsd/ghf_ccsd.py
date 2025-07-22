@@ -130,8 +130,9 @@ class GHF_CCSD:
             raise RuntimeError("CCSD didn't converge")
         self.cc_solved = True
 
-    def solve_lambda_equations(self):
+    def solve_lambda_equations(self) -> None:
         MAX_CCSD_ITER = self.CONFIG.max_iterations
+        ENERGY_CONVERGENCE = self.CONFIG.energy_convergence
         RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
         CC_ENERGY = self.get_energy()
         if self.cc_solved is False:
@@ -140,13 +141,22 @@ class GHF_CCSD:
         self.initialize_lambda()
 
         for iter_idx in range(MAX_CCSD_ITER):
+            old_pseudoenergy = self._calculate_lambda_pseudoenergy()
+
             residuals = self.calculate_lambda_residuals(CC_ENERGY)
             new_lambdas = self.calculate_new_lambdas(residuals)
             self.update_lambdas(new_lambdas)
+
+            new_pseudoenergy = self._calculate_lambda_pseudoenergy()
+            pseudoenergy_change = abs(new_pseudoenergy - old_pseudoenergy)
             residuals_norm = float(self.get_residuals_norm(residuals))
-            self.print_lambda_iteration_report(iter_idx, residuals_norm)
+            self.print_lambda_iteration_report(
+                iter_idx, residuals_norm, new_pseudoenergy,
+                pseudoenergy_change,
+            )
             residuals_converged = residuals_norm < RESIDUALS_CONVERGENCE
-            if residuals_converged:
+            pseudoenergy_converged = pseudoenergy_change < ENERGY_CONVERGENCE
+            if residuals_converged and pseudoenergy_converged:
                 break
         else:
             raise RuntimeError("Lambda-GHF_CCSD didn't converge.")
@@ -375,6 +385,24 @@ class GHF_CCSD:
             l2=self.data.t2.copy().transpose((2, 3, 0, 1)),
         )
 
+    def _calculate_lambda_pseudoenergy(self) -> float:
+        assert self.data.lmbda is not None
+        l1 = self.data.lmbda.l1
+        l2 = self.data.lmbda.l2
+        f = self.ghf_data.f
+        g = self.ghf_data.g
+        o = self.ghf_data.o
+        v = self.ghf_data.v
+
+        pseudo_energy = np.einsum('ia,ai->', l1, f[v, o], optimize=True)
+        pseudo_energy += 0.25 * np.einsum(
+            'ijab,abij->', l2, g[v, v, o, o], optimize=True
+        )
+        pseudo_energy += 0.5 * np.einsum(
+            'ia,jb,abij->', l1, l1, g[v, v, o, o], optimize=True
+        )
+        return float(pseudo_energy)
+
     def calculate_lambda_residuals(self, CC_ENERGY: float):
         residuals = dict()
 
@@ -434,7 +462,8 @@ class GHF_CCSD:
         lmbda.l2 = new_lambdas['doubles']
 
     def print_lambda_iteration_report(
-            self, iter_idx: int, residuals_norm: float,
+        self, iter_idx: int, residuals_norm: float, pseudoenergy: float,
+        pseudoenergy_change: float,
     ):
         if self.CONFIG.verbose == 0:
             return
@@ -442,6 +471,8 @@ class GHF_CCSD:
         e_fmt = '12.6f'
         print(f"Iteration {iter_idx + 1:>2d}:", end='')
         print(f' {residuals_norm:{e_fmt}}', end='')
+        print(f' {pseudoenergy:{e_fmt}}', end='')
+        print(f' {pseudoenergy_change:{e_fmt}}', end='')
         # TODO:
         # if self.diis is not None:
         #     if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
