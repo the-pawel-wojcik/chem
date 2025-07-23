@@ -51,7 +51,7 @@ class GHF_CCSD:
             self.CONFIG = GHF_CCSD_Config()
         else:
             self.CONFIG = config
-        self.dampers = self.build_dampers(
+        self.dampers = self._build_dampers(
             shift_1e=self.CONFIG.shift_1e,
             shift_2e=self.CONFIG.shift_2e,
         )
@@ -67,7 +67,7 @@ class GHF_CCSD:
         else:
             self.diis = None
 
-    def build_dampers(self, shift_1e: float = 0.0, shift_2e: float = 0.0):
+    def _build_dampers(self, shift_1e: float = 0.0, shift_2e: float = 0.0):
         """ Helper objects that allow you to take a `matrix` and do
         `matrix / (f_ii - f_aa)`
         by doing
@@ -107,18 +107,18 @@ class GHF_CCSD:
         RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
 
         for iter_idx in range(MAX_CCSD_ITER):
-            old_energy = self.get_energy()
+            old_energy = self._evalue_cc_energy_expression()
 
-            residuals = self.calculate_residuals()
-            new_t_amps = self.calculate_new_amplitudes(residuals)
+            residuals = self._calculate_residuals()
+            new_t_amps = self._calculate_new_amplitudes(residuals)
             if self.diis is not None:
                 new_t_amps = self.diis.find_next_guess(new_t_amps, residuals)
-            self.update_t_amps(new_t_amps)
+            self._update_t_amps(new_t_amps)
 
-            new_energy = self.get_energy()
+            new_energy = self._evalue_cc_energy_expression()
             energy_change = new_energy - old_energy
-            residuals_norm = self.get_residuals_norm(residuals)
-            self.print_iteration_report(
+            residuals_norm = self._get_residuals_norm(residuals)
+            self._print_iteration_report(
                 iter_idx, new_energy, energy_change, residuals_norm,
             )
 
@@ -139,19 +139,19 @@ class GHF_CCSD:
             self.solve_cc_equations()
         CC_ENERGY = self.get_energy()
 
-        self.initialize_lambda()
+        self._initialize_lambda()
 
         for iter_idx in range(MAX_CCSD_ITER):
             old_pseudoenergy = self._calculate_lambda_pseudoenergy()
 
-            residuals = self.calculate_lambda_residuals(CC_ENERGY)
-            new_lambdas = self.calculate_new_lambdas(residuals)
-            self.update_lambdas(new_lambdas)
+            residuals = self._calculate_lambda_residuals(CC_ENERGY)
+            new_lambdas = self._calculate_new_lambdas(residuals)
+            self._update_lambdas(new_lambdas)
 
             new_pseudoenergy = self._calculate_lambda_pseudoenergy()
             pseudoenergy_change = abs(new_pseudoenergy - old_pseudoenergy)
-            residuals_norm = float(self.get_residuals_norm(residuals))
-            self.print_lambda_iteration_report(
+            residuals_norm = float(self._get_residuals_norm(residuals))
+            self._print_lambda_iteration_report(
                 iter_idx, residuals_norm, new_pseudoenergy,
                 pseudoenergy_change,
             )
@@ -206,12 +206,12 @@ class GHF_CCSD:
                 print(f'{sv_id:>3d}: {singular:.4f}')
 
     def get_energy(self) -> float:
-        # TODO: the energy calculation is used before the CC equations are
-        # solved but it might be better if the user-facing interface shows an
-        # error if this is used
-        # Move this get_energy to _get_energy and in get_energy check if the
-        # energy check if cc_solved is True and raise and solve them first if
-        # not solved yet.
+        if self.cc_solved is False:
+            self.solve_cc_equations()
+        energy = self._evalue_cc_energy_expression()
+        return energy
+
+    def _evalue_cc_energy_expression(self) -> float:
         ghf_ccsd_energy = get_ghf_ccsd_energy(
             ghf_data=self.ghf_data,
             ghf_ccsd_data=self.data,
@@ -345,7 +345,7 @@ class GHF_CCSD:
                 })
         return top_l2
 
-    def calculate_residuals(self):
+    def _calculate_residuals(self):
         residuals = dict()
 
         kwargs = GHF_Generators_Input(
@@ -358,7 +358,7 @@ class GHF_CCSD:
 
         return residuals
 
-    def calculate_new_amplitudes(
+    def _calculate_new_amplitudes(
         self,
         residuals: dict[str, NDArray]
     ) -> dict[str, NDArray]:
@@ -376,15 +376,15 @@ class GHF_CCSD:
 
         return new_t_amps
 
-    def update_t_amps(self, new_t_amps: dict[str, NDArray]) -> None:
+    def _update_t_amps(self, new_t_amps: dict[str, NDArray]) -> None:
         self.data.t1 = new_t_amps['singles']
         self.data.t2 = new_t_amps['doubles']
 
-    def get_residuals_norm(self, residuals: dict[str, NDArray]) -> float:
+    def _get_residuals_norm(self, residuals: dict[str, NDArray]) -> float:
         norm = sum(np.linalg.norm(residual) for residual in residuals.values())
         return float(norm)
 
-    def print_iteration_report(
+    def _print_iteration_report(
         self,
         iter_idx: int,
         current_energy: float,
@@ -404,7 +404,7 @@ class GHF_CCSD:
                 print(' DIIS', end='')
         print('')
 
-    def initialize_lambda(self):
+    def _initialize_lambda(self):
         if self.data.lmbda is not None:
             msg = "Re-initializing GHF CCSD Lambda."
             raise RuntimeError(msg)
@@ -432,7 +432,7 @@ class GHF_CCSD:
         )
         return float(pseudo_energy)
 
-    def calculate_lambda_residuals(self, CC_ENERGY: float):
+    def _calculate_lambda_residuals(self, CC_ENERGY: float):
         residuals = dict()
 
         kwargs = GHF_Generators_Input(
@@ -456,7 +456,7 @@ class GHF_CCSD:
 
         return residuals
 
-    def calculate_new_lambdas(
+    def _calculate_new_lambdas(
         self,
         residuals: dict[str, NDArray],
     ) -> dict[str, NDArray]:
@@ -482,7 +482,7 @@ class GHF_CCSD:
 
         return new_lambdas
 
-    def update_lambdas(self, new_lambdas: dict[str, NDArray]) -> None:
+    def _update_lambdas(self, new_lambdas: dict[str, NDArray]) -> None:
         if self.data.lmbda is None:
             raise RuntimeError("GHF CCSD Lambda uninitialized.")
 
@@ -490,7 +490,7 @@ class GHF_CCSD:
         lmbda.l1 = new_lambdas['singles']
         lmbda.l2 = new_lambdas['doubles']
 
-    def print_lambda_iteration_report(
+    def _print_lambda_iteration_report(
         self, iter_idx: int, residuals_norm: float, pseudoenergy: float,
         pseudoenergy_change: float,
     ):
