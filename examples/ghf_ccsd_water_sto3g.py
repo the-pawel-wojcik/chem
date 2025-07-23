@@ -2,6 +2,19 @@ from chem.ccsd.ghf_ccsd import GHF_CCSD, GHF_CCSD_Config
 from chem.hf.containers import ResultHF
 from chem.hf.electronic_structure import hf
 from chem.hf.ghf_data import wfn_to_GHF_Data
+from chem.meta.coordinates import Descartes
+from psi4.core import Molecule
+
+
+def get_nuclear_electric_dipole_moment(mol: Molecule) -> dict[Descartes, float]:
+    atoms = mol.geometry().to_array()
+    nEDM = {direction: 0.0 for direction in Descartes}
+    for idx, atom in enumerate(atoms):
+        charge = mol.charge(idx)
+        nEDM[Descartes.x] += charge * atom[0]
+        nEDM[Descartes.y] += charge * atom[1]
+        nEDM[Descartes.z] += charge * atom[2]
+    return nEDM
 
 
 def main():
@@ -47,6 +60,17 @@ def main():
     print('GHF-CCSD equations solved.')
     ccsd.print_leading_lambda_amplitudes()
     ccsd.print_no_occupations()
+    eEDM = ccsd.get_electronic_electric_dipole_moment()
+    print("The electronic part of the electric dipole moment:")
+    for coordinate, value in eEDM.items():
+        print(f'{coordinate}: {value:{fltfmt}}')
+    nEDM = get_nuclear_electric_dipole_moment(hf_result.molecule)
+    print("The nuclear part of the electric dipole moment:")
+    for coordinate, value in nEDM.items():
+        print(f'{coordinate}: {value:{fltfmt}}')
+    print("The electric dipole moment:")
+    for coordinate in Descartes:
+        print(f'{coordinate}: {eEDM[coordinate] + nEDM[coordinate]:{fltfmt}}')
 
 
 if __name__ == "__main__":

@@ -163,6 +163,13 @@ class GHF_CCSD:
             raise RuntimeError("Lambda-GHF_CCSD didn't converge.")
         self.lambda_cc_solved = True
 
+    def get_electronic_electric_dipole_moment(self) -> dict[Descartes, float]:
+        """ The electronic part of the electric dipole moment. To find the
+        molecular electric dipole moment, these value needs to be augmented
+        with the nuclear electric dipole moment. """
+        eEDM = self._get_electronic_electric_dipole_moment()
+        return eEDM
+
     def _get_electronic_electric_dipole_moment(self) -> dict[Descartes, float]:
         if self.lambda_cc_solved is False:
             self.solve_lambda_equations()
