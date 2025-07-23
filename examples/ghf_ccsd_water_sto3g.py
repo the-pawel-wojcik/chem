@@ -27,7 +27,12 @@ def main():
     symmetry c1
     """
     basis='sto-3g'
-    print(f'Solving SCF/{basis} for molecule specified with: {geometry}')
+    print(f'Molecule specified with: {geometry}')
+    print(f'Basis set to {basis}')
+
+    print('\n# SCF\n')
+     
+    print(f'Solving SCF.')
     hf_result: ResultHF = hf(geometry=geometry, basis=basis)
     print('SCF converged.')
     nre: float = hf_result.molecule.nuclear_repulsion_energy()
@@ -36,6 +41,8 @@ def main():
     fltfmt = ' 18.12f'
     print(f'{"Nuclear repulsion energy:":{strfmt}} {nre:{fltfmt}} Ha')
     print(f'{"SCF energy:":{strfmt}} {scf_energy + nre:{fltfmt}} Ha')
+
+    print('\n# CC\n')
 
     ghf_data = wfn_to_GHF_Data(hf_result.wfn)
     ccsd = GHF_CCSD(
@@ -49,16 +56,13 @@ def main():
             t_amp_print_threshold=5e-2,
         )
     )
-    print('Solving GHF-CCSD equations.')
     ccsd.solve_cc_equations()
-    print('GHF-CCSD equations solved.')
-    ccsd.print_leading_t_amplitudes()
     ccsd_energy = ccsd.get_energy()
     print(f'{"GHF-CCSD energy:":{strfmt}} {ccsd_energy + nre:{fltfmt}} Ha')
-    print('Solving GHF-CCSD Lambda equations.')
+
+    print('\n# CC Properties\n')
+
     ccsd.solve_lambda_equations()
-    print('GHF-CCSD equations solved.')
-    ccsd.print_leading_lambda_amplitudes()
     ccsd.print_no_occupations()
     eEDM = ccsd.get_electronic_electric_dipole_moment()
     print("The electronic part of the electric dipole moment:")

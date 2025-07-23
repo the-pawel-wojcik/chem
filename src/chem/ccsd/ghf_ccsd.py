@@ -30,6 +30,19 @@ class GHF_CCSD_Config:
     shift_2e: float = 0.0
     t_amp_print_threshold: float = 0.01
 
+    def __str__(self) -> str:
+        msg = "GHF-CCSD config\n"
+        msg += f"  Using DIIS: {self.use_diis}\n"
+        msg += f"  Maximum number of itertations: {self.max_iterations}\n"
+        msg += f"  Energy convergence: {self.energy_convergence} Ha\n"
+        msg += f"  Residuals convergence: {self.residuals_convergence} Ha\n"
+        msg += f"  Shift 1e: {self.shift_1e} Ha\n"
+        msg += f"  Shift 2e: {self.shift_2e} Ha\n"
+        msg += "Printing:\n"
+        msg += f"  Verbosity level: {self.verbose}\n"
+        msg += f"  Amplitude print threshold: {self.t_amp_print_threshold}"
+        return msg
+
 
 class GHF_CCSD:
 
@@ -66,6 +79,9 @@ class GHF_CCSD:
             # self.diis = Alt_DIIS(noa, nva, nob, nvb)
         else:
             self.diis = None
+
+        if self.CONFIG.verbose > 1:
+            print(self.CONFIG)
 
     def _build_dampers(self, shift_1e: float = 0.0, shift_2e: float = 0.0):
         """ Helper objects that allow you to take a `matrix` and do
@@ -106,6 +122,15 @@ class GHF_CCSD:
         ENERGY_CONVERGENCE = self.CONFIG.energy_convergence
         RESIDUALS_CONVERGENCE = self.CONFIG.residuals_convergence
 
+        if self.CONFIG.verbose > 0:
+            print("Solving GHF-CCSD equations.")
+
+        if self.CONFIG.verbose > 1:
+            print(' ' * 13, end='')
+            print(' ' * 4 + 'Energy/Ha', end='')
+            print(' ' * 3 + 'ΔEnergy/Ha', end='')
+            print(' ' * 3 + '|Residual|')
+
         for iter_idx in range(MAX_CCSD_ITER):
             old_energy = self._evalue_cc_energy_expression()
 
@@ -128,8 +153,14 @@ class GHF_CCSD:
             if energy_converged and residuals_converged:
                 break
         else:
-            raise RuntimeError("CCSD didn't converge")
+            raise RuntimeError("CCSD didn't converge.")
         self.cc_solved = True
+
+        if self.CONFIG.verbose > 0:
+            print("GHF-CCSD equations solved.")
+
+        if self.CONFIG.verbose > 1:
+            self.print_leading_t_amplitudes()
 
     def solve_lambda_equations(self) -> None:
         MAX_CCSD_ITER = self.CONFIG.max_iterations
@@ -140,6 +171,15 @@ class GHF_CCSD:
         CC_ENERGY = self.get_energy()
 
         self._initialize_lambda()
+
+        if self.CONFIG.verbose > 0:
+            print("Solving GHF-CCSD Lambda equations.")
+
+        if self.CONFIG.verbose > 1:
+            print(' ' * 13, end='')
+            print(' ' * 2 + '"Energy"/Ha', end='')
+            print(' ' * 1 + 'Δ"Energy"/Ha', end='')
+            print(' ' * 3 + '|Residual|')
 
         for iter_idx in range(MAX_CCSD_ITER):
             old_pseudoenergy = self._calculate_lambda_pseudoenergy()
@@ -162,6 +202,11 @@ class GHF_CCSD:
         else:
             raise RuntimeError("Lambda-GHF_CCSD didn't converge.")
         self.lambda_cc_solved = True
+
+        if self.CONFIG.verbose > 0:
+            print("GHF-CCSD lambda equations solved.")
+        if self.CONFIG.verbose > 1:
+            self.print_leading_lambda_amplitudes()
 
     def get_electronic_electric_dipole_moment(self) -> dict[Descartes, float]:
         """ The electronic part of the electric dipole moment. To find the
@@ -234,22 +279,28 @@ class GHF_CCSD:
 
         THRESHOLD = self.CONFIG.t_amp_print_threshold
         with np.printoptions(precision=3, suppress=True):
-            print(f"t1 amplitudes greater than {THRESHOLD:.0e}:")
-            print(f"{'v':>3s} {'o':>3s} {'t1[v,o]':^7s}")
-            for top in top_t1:
-                print(f'{top['v']:>3d} {top['o']:>3d} {top['amp']:+7.3f}')
+            if len(top_t1) == 0:
+                print(f"No t1 amplitudes greater than {THRESHOLD:.0e}.")
+            else:
+                print(f"t1 amplitudes greater than {THRESHOLD:.0e}:")
+                print(f"{'v':>3s} {'o':>3s} {'t1[v,o]':^7s}")
+                for top in top_t1:
+                    print(f'{top['v']:>3d} {top['o']:>3d} {top['amp']:+7.3f}')
             print(f'Norm the t1 = {np.linalg.norm(self.data.t1):.3f}')
 
-            print(f"t2 amplitudes greater than {THRESHOLD:.0e}:")
-            print(
-                f"{'vl':>3s} {'vr':>3s} {'ol':>3s} {'or':>3s}"
-                f" {'t2[vl,vr,ol,or]'}"
-            )
-            for top in top_t2:
+            if len(top_t2) == 0:
+                print(f"No t2 amplitudes greater than {THRESHOLD:.0e}.")
+            else:
+                print(f"t2 amplitudes greater than {THRESHOLD:.0e}:")
                 print(
-                    f'{top['vl']:>3d} {top['vr']:>3d} {top['ol']:>3d}'
-                    f' {top['or']:>3d} {top['amp']:+7.3f}'
+                    f"{'vl':>3s} {'vr':>3s} {'ol':>3s} {'or':>3s}"
+                    f" {'t2[vl,vr,ol,or]'}"
                 )
+                for top in top_t2:
+                    print(
+                        f'{top['vl']:>3d} {top['vr']:>3d} {top['ol']:>3d}'
+                        f' {top['or']:>3d} {top['amp']:+7.3f}'
+                    )
             print(f'Norm the t2 = {np.linalg.norm(self.data.t2):.3f}')
 
     def print_leading_lambda_amplitudes(self) -> None:
@@ -398,7 +449,7 @@ class GHF_CCSD:
         energy_change: float,
         residuals_norm: float,
     ):
-        if self.CONFIG.verbose == 0:
+        if self.CONFIG.verbose < 2:
             return
 
         e_fmt = '12.6f'
@@ -501,14 +552,14 @@ class GHF_CCSD:
         self, iter_idx: int, residuals_norm: float, pseudoenergy: float,
         pseudoenergy_change: float,
     ):
-        if self.CONFIG.verbose == 0:
+        if self.CONFIG.verbose < 2:
             return
 
         e_fmt = '12.6f'
         print(f"Iteration {iter_idx + 1:>2d}:", end='')
-        print(f' {residuals_norm:{e_fmt}}', end='')
         print(f' {pseudoenergy:{e_fmt}}', end='')
         print(f' {pseudoenergy_change:{e_fmt}}', end='')
+        print(f' {residuals_norm:{e_fmt}}', end='')
         # TODO:
         # if self.diis is not None:
         #     if iter_idx + 1 >= self.diis.START_DIIS_AT_ITER:
