@@ -1,14 +1,14 @@
 import math
 
 from chem.hf.containers import ResultHF
+from chem.hf.ghf_data import GHF_Data, wfn_to_GHF_Data
 from chem.meta.coordinates import CARTESIAN, Descartes
-from chem.hf.intermediates_builders import Intermediates, extract_intermediates
 import numpy as np
 
 
 def test_dipole_HF_water_sto3g(water_sto3g: ResultHF) -> None:
     mol = water_sto3g.molecule
-    uhf_data: Intermediates = extract_intermediates(water_sto3g.wfn)
+    ghf_data: GHF_Data = wfn_to_GHF_Data(water_sto3g.wfn)
 
     cccdbd_dipole_au = {
         Descartes.x: 0.0,
@@ -36,24 +36,10 @@ def test_dipole_HF_water_sto3g(water_sto3g: ResultHF) -> None:
         ) for direction in Descartes
     }
 
-    oa = uhf_data.oa
-    ob = uhf_data.ob
+    o = ghf_data.o
     my_dipole_electronic = {
-        Descartes.x: float(
-            sum(uhf_data.mua_x.diagonal()[oa])
-            +
-            sum(uhf_data.mub_x.diagonal()[ob])
-        ),
-        Descartes.y: float(
-            sum(uhf_data.mua_y.diagonal()[oa])
-            +
-            sum(uhf_data.mub_y.diagonal()[ob])
-        ),
-        Descartes.z: float(
-            sum(uhf_data.mua_z.diagonal()[oa])
-            +
-            sum(uhf_data.mub_z.diagonal()[ob])
-        ),
+        direction: float(sum(ghf_data.mu[direction].diagonal()[o]))
+        for direction in Descartes
     }
 
     geo = mol.geometry().np
@@ -102,7 +88,7 @@ def test_dipole_HF_water_sto3g(water_sto3g: ResultHF) -> None:
 
 def test_dipole_HF_water_ccpVDZ(water_ccpVDZ: ResultHF) -> None:
     mol = water_ccpVDZ.molecule
-    uhf_data: Intermediates = extract_intermediates(water_ccpVDZ.wfn)
+    ghf_data: GHF_Data = wfn_to_GHF_Data(water_ccpVDZ.wfn)
     psi_dipole_electronic = {
         Descartes.x: 0.0,
         Descartes.y: 0.0,
@@ -115,24 +101,10 @@ def test_dipole_HF_water_ccpVDZ(water_ccpVDZ: ResultHF) -> None:
         Descartes.z: -0.9631122,
     }
 
-    oa = uhf_data.oa
-    ob = uhf_data.ob
+    o = ghf_data.o
     my_dipole_electronic = {
-        Descartes.x: float(
-            sum(uhf_data.mua_x.diagonal()[oa])
-            +
-            sum(uhf_data.mub_x.diagonal()[ob])
-        ),
-        Descartes.y: float(
-            sum(uhf_data.mua_y.diagonal()[oa])
-            +
-            sum(uhf_data.mub_y.diagonal()[ob])
-        ),
-        Descartes.z: float(
-            sum(uhf_data.mua_z.diagonal()[oa])
-            +
-            sum(uhf_data.mub_z.diagonal()[ob])
-        ),
+        direction: float(sum(ghf_data.mu[direction].diagonal()[o]))
+        for direction in Descartes
     }
 
     geo = mol.geometry().np

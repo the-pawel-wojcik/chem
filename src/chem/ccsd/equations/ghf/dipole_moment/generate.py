@@ -11,12 +11,11 @@ def main():
     print_imports()
     for component in Descartes:
         pq = pdaggerq.pq_helper('fermi')
-        pq.set_left_operators([['l0'], ['l1'], ['l2']])
+        pq.set_left_operators([['1'], ['l1'], ['l2']])
         pq.add_st_operator(1.0, ['h'], ['t1', 't2'])
         pq.simplify()
         extra_definitions = (
             f'h = ghf_data.mu[Descartes.{component}]',
-            f'l0 = 1.0',
         )
         print_to_numpy(
             pq,

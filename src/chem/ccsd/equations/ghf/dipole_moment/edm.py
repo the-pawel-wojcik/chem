@@ -11,7 +11,6 @@ def get_mux(
 ) -> NDArray:
     """ tensor_subscripts: () """
     h = ghf_data.mu[Descartes.x]
-    l0 = 1.0
     v = ghf_data.v
     o = ghf_data.o
     t1 = ghf_ccsd_data.t1
@@ -21,9 +20,9 @@ def get_mux(
     l1 = ghf_ccsd_data.lmbda.l1
     l2 = ghf_ccsd_data.lmbda.l2
     
-    mux =  1.00 * einsum('ii,', h[o, o], l0)
+    mux =  1.00 * einsum('ii', h[o, o])
     mux +=  1.00 * einsum('ai,ia', h[v, o], l1)
-    mux +=  1.00 * einsum('ia,ai,', h[o, v], t1, l0, optimize=['einsum_path', (0, 1), (0, 1)])
+    mux +=  1.00 * einsum('ia,ai', h[o, v], t1)
     mux += -1.00 * einsum('ji,aj,ia', h[o, o], t1, l1, optimize=['einsum_path', (0, 1), (0, 1)])
     mux +=  1.00 * einsum('ab,bi,ia', h[v, v], t1, l1, optimize=['einsum_path', (0, 1), (0, 1)])
     mux += -1.00 * einsum('jb,baij,ia', h[o, v], t2, l1, optimize=['einsum_path', (0, 1), (0, 1)])
@@ -41,7 +40,6 @@ def get_muy(
 ) -> NDArray:
     """ tensor_subscripts: () """
     h = ghf_data.mu[Descartes.y]
-    l0 = 1.0
     v = ghf_data.v
     o = ghf_data.o
     t1 = ghf_ccsd_data.t1
@@ -51,9 +49,9 @@ def get_muy(
     l1 = ghf_ccsd_data.lmbda.l1
     l2 = ghf_ccsd_data.lmbda.l2
     
-    muy =  1.00 * einsum('ii,', h[o, o], l0)
+    muy =  1.00 * einsum('ii', h[o, o])
     muy +=  1.00 * einsum('ai,ia', h[v, o], l1)
-    muy +=  1.00 * einsum('ia,ai,', h[o, v], t1, l0, optimize=['einsum_path', (0, 1), (0, 1)])
+    muy +=  1.00 * einsum('ia,ai', h[o, v], t1)
     muy += -1.00 * einsum('ji,aj,ia', h[o, o], t1, l1, optimize=['einsum_path', (0, 1), (0, 1)])
     muy +=  1.00 * einsum('ab,bi,ia', h[v, v], t1, l1, optimize=['einsum_path', (0, 1), (0, 1)])
     muy += -1.00 * einsum('jb,baij,ia', h[o, v], t2, l1, optimize=['einsum_path', (0, 1), (0, 1)])
@@ -71,7 +69,6 @@ def get_muz(
 ) -> NDArray:
     """ tensor_subscripts: () """
     h = ghf_data.mu[Descartes.z]
-    l0 = 1.0
     v = ghf_data.v
     o = ghf_data.o
     t1 = ghf_ccsd_data.t1
@@ -81,9 +78,9 @@ def get_muz(
     l1 = ghf_ccsd_data.lmbda.l1
     l2 = ghf_ccsd_data.lmbda.l2
     
-    muz =  1.00 * einsum('ii,', h[o, o], l0)
+    muz =  1.00 * einsum('ii', h[o, o])
     muz +=  1.00 * einsum('ai,ia', h[v, o], l1)
-    muz +=  1.00 * einsum('ia,ai,', h[o, v], t1, l0, optimize=['einsum_path', (0, 1), (0, 1)])
+    muz +=  1.00 * einsum('ia,ai', h[o, v], t1)
     muz += -1.00 * einsum('ji,aj,ia', h[o, o], t1, l1, optimize=['einsum_path', (0, 1), (0, 1)])
     muz +=  1.00 * einsum('ab,bi,ia', h[v, v], t1, l1, optimize=['einsum_path', (0, 1), (0, 1)])
     muz += -1.00 * einsum('jb,baij,ia', h[o, v], t2, l1, optimize=['einsum_path', (0, 1), (0, 1)])
