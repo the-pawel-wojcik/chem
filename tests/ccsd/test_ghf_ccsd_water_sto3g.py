@@ -31,7 +31,6 @@ def nuclear_repulsion_energy(water_sto3g: ResultHF) -> float:
     return nuclear_repulsion_energy
 
 
-@pytest.mark.skip
 def test_nuclear_repulsion_energy(nuclear_repulsion_energy: float) -> None:
     assert np.isclose(nuclear_repulsion_energy, PSI4_NRE_H2O_STO3G, 1e-10)
 
@@ -41,7 +40,6 @@ def ghf_data(water_sto3g: ResultHF) -> GHF_Data:
     return wfn_to_GHF_Data(water_sto3g.wfn)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize(
     argnames='ghf_ccsd_config',
     argvalues= [
@@ -105,7 +103,7 @@ def test_dipole_moment(ghf_data: GHF_Data) -> None:
 
     eEDM_via_opdm = ccsd._get_electronic_electric_dipole_moment_via_opdm()
     for key, val in eEDM_via_opdm.items():
-        assert np.isclose(PSI4_CCSD_DIPOLE_ELECTRONIC[key], val, atol=1e-2)
+        assert np.isclose(PSI4_CCSD_DIPOLE_ELECTRONIC[key], val, atol=1e-7)
 
     # The two different ways of fiding the eEDM coincide
     for dir in Descartes:
@@ -122,6 +120,7 @@ def test_dipole_moment(ghf_data: GHF_Data) -> None:
             f' {eEDM_via_opdm[dir]:{fmt}}'
             f' {electronic_edm[dir]:{fmt}}'
         )
+    print()
     print('Total electric dipole moment')
     print('       Psi      OPDM      <mu>')
     for dir in Descartes:
