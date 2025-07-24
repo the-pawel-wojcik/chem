@@ -98,7 +98,17 @@ def wfn_to_GHF_Data(wfn: Wavefunction) -> GHF_Data:
         wfn.epsilon_a().to_array(),
         wfn.epsilon_b().to_array(),
     ))
-    order = np.argsort(orbital_energies)
+
+    # The GHF objects are created by stacking the down spinorbitals (beta) on
+    # top of the up spinorbitals (alpha). In practice the desired order is the
+    # one dictated by the eigenvalues of the Fock operator. The `order`
+    # variable gives instruction on how to reshuffle these "stacked" quantities
+    # into a "staggered", energetically order ones.
+    order = np.zeros(shape=nmo, dtype=int)
+    for idx in range(nmo//2):
+        order[2*idx] = idx
+        order[2*idx + 1] = idx + nmo//2
+
     # orbitals = np.hstack((mos_up, mos_up))[:, order]  # not needed
     fock = np.diag(orbital_energies[order])
 
