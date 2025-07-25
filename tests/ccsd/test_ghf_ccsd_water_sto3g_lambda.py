@@ -44,9 +44,11 @@ def test_lambda_solver(
     ccsd.solve_lambda_equations()
     print('GHF-CCSD Lambda equations solved.')
     no_occupations = ccsd._get_no_occupations()
-    BENCH_NO_OCCUPATIONS = [0.99999901, 0.99999901, 0.99921936, 0.99921936,
-    0.99896584, 0.99896584, 0.98659275, 0.98659275, 0.98493343, 0.98493343,
-    0.01555294, 0.01555294, 0.01473737, 0.01473737]
+    BENCH_NO_OCCUPATIONS = [
+        0.99999901, 0.99999901, 0.99921936, 0.99921936, 0.99896584, 0.99896584,
+        0.98659275, 0.98659275, 0.98493343, 0.98493343, 0.01555294, 0.01555294,
+        0.01473737, 0.01473737,
+    ]
     assert np.allclose(no_occupations, BENCH_NO_OCCUPATIONS, atol=1e-6)
     # compare against RHF-CCSD printout from Psi4
     assert np.isclose(sum(no_occupations[2*2:2*2+2]), 1.998, atol=1e-3)
