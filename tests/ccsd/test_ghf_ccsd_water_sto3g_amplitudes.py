@@ -108,10 +108,16 @@ def turn_psi4_IjAb_rhf_to_ghf(psi: NDArray, ghf_data: GHF_Data) -> NDArray:
         value = psi[i, j, a, b]
         # each 2-electron matrix element in RHF 
         # corresponds to four spin cases in GHF
+
+        # the commented out terms are zero in psi4
         # ghf[2*a, 2*b, 2*i, 2*j] = value
         ghf[2*a+1, 2*b, 2*i+1, 2*j] = value
         ghf[2*a, 2*b+1, 2*i, 2*j+1] = value
         # ghf[2*a+1, 2*b+1, 2*i+1, 2*j+1] = value
+
+        # new terms added
+        ghf[2*a+1, 2*b, 2*i, 2*j+1] = -value
+        ghf[2*a, 2*b+1, 2*i+1, 2*j] = -value
     return ghf
 
 
