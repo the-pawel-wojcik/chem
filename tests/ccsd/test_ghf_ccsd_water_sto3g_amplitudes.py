@@ -75,7 +75,7 @@ def print_ghf_doubles(doubles: NDArray, ghf_data: GHF_Data) -> None:
     assert doubles.shape == (nv, nv, no, no)
 
     pad = ' '
-    fmt = ' 6.3f'
+    fmt = ' z6.3f'
     print(r'[')  # ]
     for a, cube in enumerate(doubles):
         print(f'{pad}[ {a=}')  # ]
@@ -108,10 +108,10 @@ def turn_psi4_IjAb_rhf_to_ghf(psi: NDArray, ghf_data: GHF_Data) -> NDArray:
         value = psi[i, j, a, b]
         # each 2-electron matrix element in RHF 
         # corresponds to four spin cases in GHF
-        ghf[2*a, 2*b, 2*i, 2*j] = value
+        # ghf[2*a, 2*b, 2*i, 2*j] = value
         ghf[2*a+1, 2*b, 2*i+1, 2*j] = value
         ghf[2*a, 2*b+1, 2*i, 2*j+1] = value
-        ghf[2*a+1, 2*b+1, 2*i+1, 2*j+1] = value
+        # ghf[2*a+1, 2*b+1, 2*i+1, 2*j+1] = value
     return ghf
 
 
