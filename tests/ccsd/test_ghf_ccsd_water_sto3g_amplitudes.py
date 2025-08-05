@@ -5,7 +5,7 @@ from chem.hf.electronic_structure import ResultHF
 from chem.hf.ghf_data import GHF_Data, wfn_to_GHF_Data
 import numpy as np
 from numpy.typing import NDArray
-from psi4_ccsd_sto3_water_data import PSI4_tIjAb
+from psi4_ccsd_sto3_water_data import PSI4_tIjAb, PSI4_tijab
 import pytest
 
 
@@ -14,7 +14,6 @@ def ghf_data(water_sto3g: ResultHF) -> GHF_Data:
     return wfn_to_GHF_Data(water_sto3g.wfn)
 
 
-@pytest.mark.skip
 def test_ccsd_print_leading_t_amplitudes(
     ghf_data: GHF_Data,
 ) -> None:
@@ -95,18 +94,19 @@ def print_ghf_doubles(doubles: NDArray, ghf_data: GHF_Data) -> None:
     print(']')
 
 
-
-
-def turn_psi4_IjAb_rhf_to_ghf(psi: NDArray, ghf_data: GHF_Data) -> NDArray:
+def turn_psi4_IjAb_rhf_to_ghf(
+    t2IjAb: NDArray,
+    ghf_data: GHF_Data,
+) -> NDArray:
     nv = ghf_data.nv // 2  # RHF is only half the dimension of GHF
     no = ghf_data.no // 2
-    assert psi.shape == (no, no, nv, nv)
+    assert t2IjAb.shape == (no, no, nv, nv)
     ghf = np.zeros(shape=[2*nv, 2*nv, 2*no, 2*no])
     for a, b, i, j in itertools.product(
         range(0, nv), range(0, nv), range(0, no), range(0, no)
     ):
-        value = psi[i, j, a, b]
-        # each 2-electron matrix element in RHF 
+        value = t2IjAb[i, j, a, b]
+        # each 2-electron matrix element in RHF
         # corresponds to four spin cases in GHF
 
         # the commented out terms are zero in psi4
@@ -121,9 +121,29 @@ def turn_psi4_IjAb_rhf_to_ghf(psi: NDArray, ghf_data: GHF_Data) -> NDArray:
     return ghf
 
 
+def turn_psi4_ijab_rhf_to_ghf(
+    t2ijab: NDArray,
+    ghf_data: GHF_Data,
+) -> NDArray:
+    nv = ghf_data.nv // 2  # RHF is only half the dimension of GHF
+    no = ghf_data.no // 2
+    assert t2ijab.shape == (no, no, nv, nv)
+    ghf = np.zeros(shape=[2*nv, 2*nv, 2*no, 2*no])
+    for a, b, i, j in itertools.product(
+        range(0, nv), range(0, nv), range(0, no), range(0, no)
+    ):
+        lowercase = t2ijab[i, j, a, b]
+        ghf[2*a, 2*b, 2*i, 2*j] = lowercase
+        ghf[2*a+1, 2*b+1, 2*i+1, 2*j+1] = lowercase
+    return ghf
+
+
+@pytest.mark.skip
 def test_t2_amplitudes_vs_Psi4(
     ghf_data: GHF_Data,
 ) -> None:
+    """ This one is unfinished. Learn how to fully convert the t2s from Psi4's
+    format to complete this example. """
     ccsd = GHF_CCSD(
         ghf_data,
         GHF_CCSD_Config(
@@ -139,18 +159,28 @@ def test_t2_amplitudes_vs_Psi4(
     )
     ccsd.solve_cc_equations()
     t2_paweł = ccsd.data.t2
-    t2_psi = turn_psi4_IjAb_rhf_to_ghf(np.array(PSI4_tIjAb), ghf_data)
+    t2_psi_IjAb = turn_psi4_IjAb_rhf_to_ghf(
+        np.array(PSI4_tIjAb),
+        ghf_data,
+    )
+    t2_psi_ijab = turn_psi4_ijab_rhf_to_ghf(
+        np.array(PSI4_tijab),
+        ghf_data,
+    )
     print()
     print("Paweł's t2")
     print_ghf_doubles(t2_paweł, ghf_data)
+    print("Psi's t2_IjAb converted to GHF")
+    print_ghf_doubles(t2_psi_IjAb, ghf_data)
+    print("Psi's t2_ijab converted to GHF")
+    print_ghf_doubles(t2_psi_ijab, ghf_data)
     print("Psi's t2 converted to GHF")
-    print_ghf_doubles(t2_psi, ghf_data)
+    print_ghf_doubles(t2_psi_IjAb + t2_psi_ijab, ghf_data)
     # assert t2_paweł.shape == t2_psi.shape
     # for cube_pw, cube_psi in zip(t2_paweł, t2_psi):
     #     assert np.allclose(cube_pw, cube_psi, atol=1e-8)
 
 
-@pytest.mark.skip
 def test_ccsd_print_leading_lambda_amplitudes(
     ghf_data: GHF_Data,
 ) -> None:
