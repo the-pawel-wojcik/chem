@@ -318,23 +318,29 @@ class GHF_CCSD:
 
         THRESHOLD = self.CONFIG.t_amp_print_threshold
         with np.printoptions(precision=3, suppress=True):
-            print(f"l1 amplitudes greater than {THRESHOLD:.0e}:")
-            print(f"{'o':>3s} {'v':>3s} {'l1[o,v]':^7s}")
-            for top in top_l1:
-                print(f'{top['o']:>3d} {top['v']:>3d} {top['amp']:+7.3f}')
+            if len(top_l1) == 0:
+                print(f"No l1 amplitudes greater than {THRESHOLD:.0e}.")
+            else:
+                print(f"l1 amplitudes greater than {THRESHOLD:.0e}:")
+                print(f"{'o':>3s} {'v':>3s} {'l1[o,v]':^7s}")
+                for top in top_l1:
+                    print(f'{top['o']:>3d} {top['v']:>3d} {top['amp']:+7.3f}')
             print(f'Norm the l1 = {np.linalg.norm(self.data.lmbda.l1):.3f}')
 
-            print(f"l2 amplitudes greater than {THRESHOLD:.0e}:")
-            print(
-                f"{'ol':>3s} {'or':>3s} {'vl':>3s} {'vr':>3s}"
-                f" {'l2[ol,or,vl,vr]'}"
-            )
-            for top in top_l2:
+            if len(top_l2) == 0:
+                print(f"No l2 amplitudes greater than {THRESHOLD:.0e}.")
+            else:
+                print(f"l2 amplitudes greater than {THRESHOLD:.0e}:")
                 print(
-                    f'{top['ol']:>3d} {top['or']:>3d}'
-                    f' {top['vl']:>3d} {top['vr']:>3d}'
-                    f' {top['amp']:+7.3f}'
+                    f"{'ol':>3s} {'or':>3s} {'vl':>3s} {'vr':>3s}"
+                    f" {'l2[ol,or,vl,vr]'}"
                 )
+                for top in top_l2:
+                    print(
+                        f'{top['ol']:>3d} {top['or']:>3d}'
+                        f' {top['vl']:>3d} {top['vr']:>3d}'
+                        f' {top['amp']:+7.3f}'
+                    )
             print(f'Norm the l2 = {np.linalg.norm(self.data.lmbda.l2):.3f}')
 
     def _find_leading_t1_amplitudes(self) -> list[dict[str, int | float]]:
