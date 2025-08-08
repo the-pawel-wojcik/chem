@@ -52,7 +52,7 @@ class Polarizability:
 
     def __str__(self) -> str:
         pretty = ""
-        fmt = '7.4f'
+        fmt = ' z12.6f'
         for left, right in itertools.product(CARTESIAN, repeat=2):
             pretty += f'{left}{right}: {self.data[left][right]:{fmt}}\n'
         pretty = pretty[:-1]  # remove the trailing new line
